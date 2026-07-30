@@ -1,0 +1,32 @@
+{
+  "name": "payroll-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -H 192.168.1.95 --webpack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "node tests/fantacy-filters.test.mjs"
+  },
+  "dependencies": {
+    "@floating-ui/core": "^1.8.0",
+    "@floating-ui/dom": "^1.8.0",
+    "ag-grid-community": "^36.0.0",
+    "ag-grid-react": "^36.0.0",
+    "next": "16.2.9",
+    "react": "19.2.4",
+    "react-datepicker": "^5.0.0",
+    "react-dom": "19.2.4",
+    "react-is": "^16.13.1",
+    "react-select": "^5.10.2",
+    "recharts": "^3.9.2",
+    "xlsx": "^0.18.5",
+    "xlsx-js-style": "^1.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "typescript": "^6.0.3"
+  }
+}
