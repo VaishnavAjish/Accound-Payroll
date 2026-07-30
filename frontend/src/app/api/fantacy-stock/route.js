@@ -157,6 +157,31 @@ const NO_CACHE_HEADERS = {
   Expires: "0",
 };
 
+// High-performance server response cache (60s TTL)
+const RESPONSE_CACHE_TTL_MS = 60 * 1000;
+const responseCache = new Map();
+
+function getCachedStockResponse(cacheKey) {
+  const entry = responseCache.get(cacheKey);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    responseCache.delete(cacheKey);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCachedStockResponse(cacheKey, data) {
+  if (responseCache.size > 50) {
+    const firstKey = responseCache.keys().next().value;
+    if (firstKey) responseCache.delete(firstKey);
+  }
+  responseCache.set(cacheKey, {
+    data,
+    expiresAt: Date.now() + RESPONSE_CACHE_TTL_MS,
+  });
+}
+
 function errorResponse({ status, message, skip, take, diagnostics }) {
   return NextResponse.json(
     {
@@ -263,6 +288,16 @@ export async function GET(request) {
   const skip = clampInt(searchParams.get("skip"), 0, 0, MAX_SKIP);
   const take = clampInt(searchParams.get("take"), DEFAULT_TAKE, 1, MAX_TAKE);
   const departments = parseRequestedDepartments(searchParams.get("departments"));
+  const forceFresh = searchParams.get("fresh") === "1" || searchParams.get("_t");
+
+  const cacheKey = `${skip}_${take}_${departments.join(",")}_${ROW_COMPANY_FILTER || ""}`;
+
+  if (!forceFresh) {
+    const cachedData = getCachedStockResponse(cacheKey);
+    if (cachedData) {
+      return NextResponse.json(cachedData, { headers: NO_CACHE_HEADERS });
+    }
+  }
 
   /**
    * TEMPORARY control test. Every request body returns the same
@@ -443,27 +478,28 @@ export async function GET(request) {
       });
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        source,
-        data: records,
-        records,
-        batchCount: records.length,
-        skip,
-        take,
-        // Counts describe the FILTERED real result, not the upstream catalogue.
-        filteredCount: records.length,
-        totalCount: reportedTotal,
-        rawPageCount: rawItems.length,
-        hasMore,
-        nextSkip: skip + rawItems.length,
-        lastUpdated: new Date().toISOString(),
-        error: null,
-        ...(EMIT_DIAGNOSTICS ? { diagnostics } : {}),
-      },
-      { headers: NO_CACHE_HEADERS }
-    );
+    const responseData = {
+      success: true,
+      source,
+      data: records,
+      records,
+      batchCount: records.length,
+      skip,
+      take,
+      // Counts describe the FILTERED real result, not the upstream catalogue.
+      filteredCount: records.length,
+      totalCount: reportedTotal,
+      rawPageCount: rawItems.length,
+      hasMore,
+      nextSkip: skip + rawItems.length,
+      lastUpdated: new Date().toISOString(),
+      error: null,
+      ...(EMIT_DIAGNOSTICS ? { diagnostics } : {}),
+    };
+
+    setCachedStockResponse(cacheKey, responseData);
+
+    return NextResponse.json(responseData, { headers: NO_CACHE_HEADERS });
   } catch (err) {
     console.error("[fantacy-stock] proxy error:", err.message);
     return errorResponse({

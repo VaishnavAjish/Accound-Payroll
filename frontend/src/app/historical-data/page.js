@@ -147,6 +147,7 @@ export default function HistoricalDataPage() {
   const [viewPreset, setViewPreset] = useState("ALL");
   const [compactDensity, setCompactDensity] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("ALL");
   const [shapeFilter, setShapeFilter] = useState("ALL");
   const [colorFilter, setColorFilter] = useState("ALL");
@@ -154,6 +155,11 @@ export default function HistoricalDataPage() {
   const [labFilter, setLabFilter] = useState("ALL");
   const [fromDateFilter, setFromDateFilter] = useState("");
   const [toDateFilter, setToDateFilter] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 150);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Sorting & Pagination
   const [sortField, setSortField] = useState("DocDate");
@@ -341,8 +347,8 @@ export default function HistoricalDataPage() {
           if (toDateFilter && itemDateStr > toDateFilter) return false;
         }
       }
-      if (searchTerm.trim()) {
-        const term = searchTerm.toLowerCase();
+      if (debouncedSearchTerm.trim()) {
+        const term = debouncedSearchTerm.toLowerCase();
         const searchableText = [
           item.Stock_ID,
           item.LotID,
@@ -363,7 +369,7 @@ export default function HistoricalDataPage() {
       }
       return true;
     });
-  }, [activeDataset, departmentFilter, shapeFilter, colorFilter, clarityFilter, labFilter, fromDateFilter, toDateFilter, searchTerm]);
+  }, [activeDataset, departmentFilter, shapeFilter, colorFilter, clarityFilter, labFilter, fromDateFilter, toDateFilter, debouncedSearchTerm]);
 
   // Sorted dataset
   const sortedData = useMemo(() => {

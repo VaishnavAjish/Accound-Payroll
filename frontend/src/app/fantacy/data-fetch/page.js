@@ -170,6 +170,7 @@ export default function FantacyDataFetchPage() {
 
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("ALL");
   const [shapeFilter, setShapeFilter] = useState("ALL");
   const [colorFilter, setColorFilter] = useState("ALL");
@@ -177,6 +178,11 @@ export default function FantacyDataFetchPage() {
   const [labFilter, setLabFilter] = useState("ALL");
   const [fromDateFilter, setFromDateFilter] = useState("");
   const [toDateFilter, setToDateFilter] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 150);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Sorting & Pagination
   const [sortField, setSortField] = useState("DocDate");
@@ -566,8 +572,8 @@ export default function FantacyDataFetchPage() {
       }
 
       // Search Term
-      if (searchTerm.trim()) {
-        const term = searchTerm.toLowerCase();
+      if (debouncedSearchTerm.trim()) {
+        const term = debouncedSearchTerm.toLowerCase();
         const searchableText = [
           item.Stock_ID,
           item.LotID,
@@ -588,7 +594,7 @@ export default function FantacyDataFetchPage() {
 
       return true;
     });
-  }, [dataVersion, activeDataset, departmentFilter, shapeFilter, colorFilter, clarityFilter, labFilter, fromDateFilter, toDateFilter, searchTerm]);
+  }, [dataVersion, activeDataset, departmentFilter, shapeFilter, colorFilter, clarityFilter, labFilter, fromDateFilter, toDateFilter, debouncedSearchTerm]);
 
   // Sorted dataset
   const sortedData = useMemo(() => {

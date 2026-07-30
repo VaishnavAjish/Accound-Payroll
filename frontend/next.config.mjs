@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  compress: true,
+  poweredByHeader: false,
   outputFileTracingRoot: process.cwd(),
   allowedDevOrigins: ['192.168.1.95'],
   reactStrictMode: false,
