@@ -173,7 +173,13 @@ export function isCanonicalDepartment(key) {
  */
 export function getRecordDepartment(item) {
   if (!item || typeof item !== "object") return "";
-  return normalizeDepartment(item[DEPARTMENT_FIELD]);
+  const rawVal = item.DepartmentAccountName || item.Department || item.DepartmentName || item.Dept || "";
+  const norm = normalizeDepartment(rawVal);
+  if (norm) return norm;
+  if (rawVal && !/^\d{3}\s+[A-Z]+/i.test(String(rawVal).trim())) {
+    return String(rawVal).trim().toLowerCase().replace(/\s+/g, "-");
+  }
+  return "";
 }
 
 /**

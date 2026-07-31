@@ -114,9 +114,7 @@ async function loadCacheFromIndexedDB(expectedSource, departmentScope) {
       const req = store.get(CACHE_META_KEY);
       req.onsuccess = async () => {
         const meta = req.result;
-        if (!meta || !meta.count) return resolve(null);
         if (meta.version !== CACHE_VERSION) return resolve(null);
-        if (meta.source !== expectedSource) return resolve(null);
 
         const cachedScope = (meta.departmentScope || []).slice().sort().join(",");
         const wantedScope = (departmentScope || []).slice().sort().join(",");
