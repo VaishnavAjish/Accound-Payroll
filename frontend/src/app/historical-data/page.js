@@ -240,9 +240,27 @@ export default function HistoricalDataPage() {
     }
   }, [managerScopeKeys]);
 
+  const loadHistoricalData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const cached = await loadCacheFromIndexedDB();
+      if (cached && cached.items && cached.items.length > 0) {
+        setDataArray(cached.items);
+        setLastUpdated(cached.lastFetchedTime ? new Date(cached.lastFetchedTime) : null);
+      } else {
+        setDataArray([]);
+      }
+    } catch (err) {
+      console.warn("Failed to load historical data from IndexedDB:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    fetchStockData();
-  }, [fetchStockData]);
+    loadHistoricalData();
+  }, [loadHistoricalData]);
 
   const handlePeriodChange = (newPeriodId) => {
     setSelectedPeriodId(newPeriodId);
