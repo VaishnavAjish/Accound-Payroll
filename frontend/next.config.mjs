@@ -6,10 +6,7 @@ const nextConfig = {
   outputFileTracingRoot: process.cwd(),
   allowedDevOrigins: ['192.168.1.95', '192.168.1.205', 'localhost'],
   reactStrictMode: false,
-  devIndicators: {
-    buildActivity: false,
-    appIsrStatus: false,
-  },
+  devIndicators: false,
   experimental: {
     optimizePackageImports: ['lucide-react', 'react-icons'],
   },

@@ -1,4 +1,4 @@
-"use client";
+import Link from "next/link";
 import { useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
@@ -308,22 +308,26 @@ export default function Sidebar({ isSidebarCollapsed, onToggleSidebar }) {
             return items.map((item) => {
               const active = isActiveHref(item.href);
               return (
-                <div
+                <Link
                   key={item.href}
+                  href={item.href}
+                  prefetch={true}
                   className={`nav-item${active ? " active" : ""}`}
-                  onClick={() => navigateTo(item.href)}
+                  onClick={() => setFlyoutSection(null)}
                   title={isSidebarCollapsed ? item.label : ""}
                   style={{
                     justifyContent: isSidebarCollapsed ? "center" : "flex-start",
                     padding: isSidebarCollapsed ? "10px 0" : "9px 10px",
                     marginBottom: isSidebarCollapsed ? 8 : 14,
+                    textDecoration: "none",
+                    color: "inherit",
                   }}
                 >
                   <span className="nav-icon" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {item.icon}
                   </span>
                   {!isSidebarCollapsed && <span>{item.label}</span>}
-                </div>
+                </Link>
               );
             });
           }
@@ -365,10 +369,10 @@ export default function Sidebar({ isSidebarCollapsed, onToggleSidebar }) {
                   {items.map((item) => {
                     const active = isActiveHref(item.href);
                     return (
-                      <div key={item.href} className={`nav-flyout-item${active ? " active" : ""}`} onClick={() => navigateTo(item.href)}>
+                      <Link key={item.href} href={item.href} prefetch={true} className={`nav-flyout-item${active ? " active" : ""}`} onClick={() => setFlyoutSection(null)} style={{ textDecoration: "none", color: "inherit" }}>
                         <span className="nav-icon">{item.icon}</span>
                         <span>{item.label}</span>
-                      </div>
+                      </Link>
                     );
                   })}
                 </div>
@@ -377,23 +381,27 @@ export default function Sidebar({ isSidebarCollapsed, onToggleSidebar }) {
                 if (!expanded) return null;
                 const active = isActiveHref(item.href);
                 return (
-                  <div
+                  <Link
                     key={item.href}
+                    href={item.href}
+                    prefetch={true}
                     className={`nav-item${active ? " active" : ""}`}
-                    onClick={() => navigateTo(item.href)}
+                    onClick={() => setFlyoutSection(null)}
                     title={isSidebarCollapsed ? item.label : ""}
                     style={{
                       justifyContent: isSidebarCollapsed ? "center" : "flex-start",
                       padding: isSidebarCollapsed ? "10px 0" : "8px 10px",
                       marginLeft: isSidebarCollapsed ? 0 : 18,
                       fontSize: isSidebarCollapsed ? undefined : 13,
+                      textDecoration: "none",
+                      color: "inherit",
                     }}
                   >
                     <span className="nav-icon" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {item.icon}
                     </span>
                     {!isSidebarCollapsed && <span>{item.label}</span>}
-                  </div>
+                  </Link>
                 );
               })}
             </div>
