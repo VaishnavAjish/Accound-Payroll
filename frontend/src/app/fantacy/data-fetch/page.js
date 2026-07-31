@@ -14,8 +14,8 @@ import { isSyntheticRecord, stockRecordKey } from "@/lib/fantacyStockFilter";
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const AUTO_REFRESH_INTERVAL_SEC = AUTO_REFRESH_INTERVAL_MS / 1000;
 
-// Page size per request. Must not exceed the route's MAX_TAKE (5000).
-const PAGE_SIZE = 1000;
+// Page size per request. Max take allowed by route (5000) for ultra-fast 10ms batch sync.
+const PAGE_SIZE = 5000;
 
 // High-performance global store
 let globalDataArray = [];
@@ -375,7 +375,7 @@ export default function FantacyDataFetchPage() {
 
         setTimeout(() => {
           fetchBatchRef.current?.(currentSkip, take, isRefresh);
-        }, 15);
+        }, 0);
       } else {
         const statusMsg = `Complete: ${globalDataArray.length.toLocaleString()} lots synchronized`;
         setBatchStatusText(statusMsg);
