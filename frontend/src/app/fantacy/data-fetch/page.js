@@ -154,6 +154,40 @@ async function clearCacheFromIndexedDB() {
   }
 }
 
+function formatCountdown(totalSec) {
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
+}
+
+function AutoFetchCountdownBadge({ onTriggerRefresh }) {
+  const [secondsUntilNextFetch, setSecondsUntilNextFetch] = useState(AUTO_REFRESH_INTERVAL_SEC);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (globalLastFetchedTime === 0) {
+        setSecondsUntilNextFetch(AUTO_REFRESH_INTERVAL_SEC);
+        return;
+      }
+      const elapsed = Date.now() - globalLastFetchedTime;
+      const remainingSec = Math.max(0, Math.ceil((AUTO_REFRESH_INTERVAL_MS - elapsed) / 1000));
+      setSecondsUntilNextFetch(remainingSec);
+
+      if (remainingSec === 0 && globalFetchFailCount < MAX_AUTO_RETRIES) {
+        if (onTriggerRefresh) onTriggerRefresh();
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [onTriggerRefresh]);
+
+  return (
+    <span className="badge badge-blue">
+      Next auto fetch: {formatCountdown(secondsUntilNextFetch)}
+    </span>
+  );
+}
+
 export default function FantacyDataFetchPage() {
   const { user, departmentAccess, permissionsLoading } = useAuth();
   const { activePeriodId, periods } = useGlobalPeriod();
@@ -163,7 +197,6 @@ export default function FantacyDataFetchPage() {
   const [batchLoading, setBatchLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [secondsUntilNextFetch, setSecondsUntilNextFetch] = useState(AUTO_REFRESH_INTERVAL_SEC);
   const [batchStatusText, setBatchStatusText] = useState(() => globalBatchStatusText);
 
   // View Options
@@ -473,25 +506,10 @@ export default function FantacyDataFetchPage() {
 
     initializeStockData();
 
-    const timer = setInterval(() => {
-      if (globalLastFetchedTime === 0) {
-        setSecondsUntilNextFetch(AUTO_REFRESH_INTERVAL_SEC);
-        return;
-      }
-      const elapsed = Date.now() - globalLastFetchedTime;
-      const remainingSec = Math.max(0, Math.ceil((AUTO_REFRESH_INTERVAL_MS - elapsed) / 1000));
-      setSecondsUntilNextFetch(remainingSec);
-
-      if (remainingSec === 0 && globalFetchFailCount < MAX_AUTO_RETRIES) {
-        handleManualRefresh();
-      }
-    }, 1000);
-
     return () => {
       isMounted = false;
-      clearInterval(timer);
     };
-  }, [permissionsLoading, fetchBatch, handleManualRefresh]);
+  }, [permissionsLoading, fetchBatch]);
 
   const activeDataset = useMemo(() => {
     const base =
@@ -877,7 +895,7 @@ export default function FantacyDataFetchPage() {
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span className="badge badge-blue">Next auto fetch: {formatCountdown(secondsUntilNextFetch)}</span>
+              <AutoFetchCountdownBadge onTriggerRefresh={handleManualRefresh} />
               <span className="badge badge-emerald">{activeDataset.length.toLocaleString()} active lots ({filterByPeriod ? (activePeriod?.name || "Active Period") : "All Periods"})</span>
               <span className="badge badge-gray">{globalDataArray.length.toLocaleString()} total synced</span>
               {managerScopedDepartments.length > 0 ? <span className="badge badge-gray">{managerScopedDepartments.join(", ")} only</span> : filterDepartmentOnly && <span className="badge badge-gray">Polish department only</span>}
