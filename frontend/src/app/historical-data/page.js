@@ -189,57 +189,6 @@ export default function HistoricalDataPage() {
     [managerScopeKeys]
   );
 
-  const fetchStockData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    // 1. Try loading cached items from IndexedDB
-    let currentDataset = [];
-    const cached = await loadCacheFromIndexedDB();
-    if (cached && cached.items && cached.items.length > 0) {
-      currentDataset = cached.items;
-      setDataArray(currentDataset);
-      setLastUpdated(cached.lastFetchedTime ? new Date(cached.lastFetchedTime) : new Date());
-      setLoading(false);
-    }
-
-    // 2. Fetch fresh dataset from API and perform cumulative upsert
-    try {
-      const params = new URLSearchParams({
-        skip: "0",
-        take: "5000",
-        _t: String(Date.now()),
-      });
-      if (managerScopeKeys.length) params.set("departments", managerScopeKeys.join(","));
-
-      const res = await fetch(`/api/fantacy-stock?${params.toString()}`, {
-        method: "GET",
-        cache: "no-store",
-        headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
-      });
-      const json = await res.json();
-      if (json.success && Array.isArray(json.records || json.data)) {
-        const incoming = json.records || json.data;
-        // Cumulative upsert: preserve past records, replace matching keys, never duplicate
-        const merged = upsertStockRecords(currentDataset, incoming);
-        setDataArray(merged);
-        const now = Date.now();
-        setLastUpdated(new Date(now));
-        saveCacheToIndexedDB(merged, now);
-      } else if (json.error) {
-        if (!cached || cached.items.length === 0) {
-          setError(json.error);
-        }
-      }
-    } catch (err) {
-      if (!cached || cached.items.length === 0) {
-        setError(err.message || "Failed to load historical stock records.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [managerScopeKeys]);
-
   const loadHistoricalData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -596,8 +545,7 @@ export default function HistoricalDataPage() {
             <p>Complete historical archive of all synchronized stock records across all periods.</p>
           </div>
           <div className="page-header-actions" style={{ marginTop: 0 }}>
-            <button className="btn btn-secondary" onClick={handleExport} disabled={sortedData.length === 0}>Export</button>
-            <button className="btn btn-primary" onClick={fetchStockData} disabled={loading}>{loading ? "Syncing..." : "Refresh Data"}</button>
+            <button className="btn btn-primary" onClick={handleExport} disabled={sortedData.length === 0}>Export</button>
           </div>
         </div>
 
@@ -607,7 +555,7 @@ export default function HistoricalDataPage() {
               <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: "50%", background: loading ? "var(--accent-primary)" : "var(--green-600)", boxShadow: loading ? "0 0 0 4px var(--accent-primary-light)" : "0 0 0 4px var(--green-50)" }} />
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
-                  {loading ? "Loading Historical Data..." : "Historical Archive Synchronized"}
+                  {loading ? "Loading Historical Storage..." : "Historical Archive Loaded"}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>
                   {lastUpdated ? `Last updated ${lastUpdated.toLocaleString()}` : "Ready"}
