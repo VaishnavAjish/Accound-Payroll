@@ -76,10 +76,9 @@ const LOT_STATUS =
  */
 const SELECT_FIELDS = STOCK_SELECT_FIELDS;
 
-// Client-facing pagination guards. These bound OUR slice of an
-// already-fetched set; they are not sent upstream (upstream ignores paging).
-const MAX_TAKE = 5000;
-const DEFAULT_TAKE = 1000;
+// Single-pass full payload streaming guard. Upstream already returns full set in memory.
+const MAX_TAKE = 100_000;
+const DEFAULT_TAKE = 50_000;
 const MAX_SKIP = 5_000_000;
 
 /**
