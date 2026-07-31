@@ -14,12 +14,21 @@ export default function Pagination({ currentPage, totalItems, itemsPerPage, onPa
         <select 
           value={itemsPerPage} 
           onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-          style={{ padding: '2px 6px', border: '1px solid var(--border-primary)', borderRadius: '4px', background: 'var(--bg-primary)', fontSize: '12px', cursor: 'pointer' }}
+          style={{ 
+            padding: '2px 6px', 
+            border: '1px solid var(--border-primary)', 
+            borderRadius: '4px', 
+            background: 'var(--bg-primary)', 
+            color: 'var(--text-primary)',
+            fontSize: '12px', 
+            cursor: 'pointer',
+            outline: 'none'
+          }}
         >
-          <option value={50}>50 / page</option>
-          <option value={100}>100 / page</option>
-          <option value={500}>500 / page</option>
-          <option value={9999999}>All</option>
+          <option style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }} value={50}>50 / page</option>
+          <option style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }} value={100}>100 / page</option>
+          <option style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }} value={500}>500 / page</option>
+          <option style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }} value={9999999}>All</option>
         </select>
       </div>
       <div style={{ display: 'flex', gap: '4px' }}>

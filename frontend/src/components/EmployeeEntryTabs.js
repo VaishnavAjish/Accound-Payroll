@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import EmployeePicker from "@/components/EmployeePicker";
 
 function labelFor(employee) {
@@ -11,19 +11,29 @@ export default function EmployeeEntryTabs({
   employees,
   activeEmployeeId,
   onActiveEmployeeChange,
+  openEmployeeIds,
+  onOpenEmployeeIdsChange,
   pickerWidth = 260,
   variant = "full",
 }) {
-  const [openTabs, setOpenTabs] = useState([]);
+  const isControlled = Array.isArray(openEmployeeIds);
+  const [internalOpenTabs, setInternalOpenTabs] = useState([]);
   const [pickerValue, setPickerValue] = useState("");
   const employeeMap = useMemo(() => Object.fromEntries(employees.map((employee) => [String(employee.id), employee])), [employees]);
+  const openTabs = isControlled ? openEmployeeIds.map(String) : internalOpenTabs;
 
-  useEffect(() => {
-    if (!activeEmployeeId) return;
-    setOpenTabs((tabs) => tabs.includes(String(activeEmployeeId)) ? tabs : [...tabs, String(activeEmployeeId)]);
-  }, [activeEmployeeId]);
+  function setOpenTabs(updater) {
+    const nextTabs = typeof updater === "function" ? updater(openTabs) : updater;
+    const uniqueTabs = [...new Set(nextTabs.map(String))];
+    if (isControlled) onOpenEmployeeIdsChange?.(uniqueTabs);
+    else setInternalOpenTabs(uniqueTabs);
+  }
 
-  const visibleTabs = openTabs.filter((employeeId) => employeeMap[employeeId]);
+  const visibleTabs = useMemo(() => {
+    const ids = [...openTabs];
+    if (activeEmployeeId && !ids.includes(String(activeEmployeeId))) ids.push(String(activeEmployeeId));
+    return ids.filter((employeeId) => employeeMap[employeeId]);
+  }, [activeEmployeeId, employeeMap, openTabs]);
 
   function closeTab(employeeId, event) {
     event.stopPropagation();
@@ -36,14 +46,29 @@ export default function EmployeeEntryTabs({
 
   function selectEmployee(employeeId) {
     onActiveEmployeeChange(employeeId);
+    if (employeeId) {
+      setOpenTabs((tabs) => tabs.includes(String(employeeId)) ? tabs : [...tabs, String(employeeId)]);
+    }
     setPickerValue("");
+  }
+
+  function updateCheckedEmployees(employeeIds) {
+    const nextTabs = employeeIds.map(String);
+    setOpenTabs(nextTabs);
+    if (activeEmployeeId && !nextTabs.includes(String(activeEmployeeId))) {
+      onActiveEmployeeChange(nextTabs[nextTabs.length - 1] || "");
+    }
   }
 
   const picker = (
     <EmployeePicker
       employees={employees}
       value={pickerValue}
+      displayValue={activeEmployeeId}
       onChange={selectEmployee}
+      multiple
+      checkedValues={visibleTabs}
+      onCheckedValuesChange={updateCheckedEmployees}
       allLabel="All employees"
       placeholder="Search employee..."
       style={{ width: pickerWidth }}

@@ -23,30 +23,101 @@
 
 export const DEPARTMENT_FIELD = "DepartmentAccountName";
 
-export const POLISH_DEPARTMENT_COUNT = 15;
+/**
+ * Authoritative department roster, transcribed from the Skylab account export
+ * ("department list.xlsx", Account Type = Department).
+ *
+ * `name` is the exact Account Name string Skylab stores. `id` is its AccountID.
+ * Note the IDs are NOT ordered by department number (Polish 1 = 107 but
+ * Polish 2 = 106), so never derive one from the other.
+ *
+ * This roster is the allow-list: a record whose department is not here is not
+ * ours, and is rejected.
+ */
+export const DEPARTMENT_ACCOUNTS = Object.freeze({
+  "polish-1": { name: "01-Polish 1", id: 107 },
+  "polish-2": { name: "02-Polish 2", id: 106 },
+  "polish-3": { name: "03-Polish 3", id: 108 },
+  "polish-4": { name: "04-Polish 4", id: 109 },
+  "polish-5": { name: "05-Polish 5", id: 110 },
+  "polish-6": { name: "06-Polish 6", id: 112 },
+  "polish-7": { name: "07-Polish 7", id: 113 },
+  "polish-8": { name: "08-Polish 8", id: 824769 },
+  "polish-9": { name: "09-Polish 9", id: 825217 },
+  "polish-10": { name: "10-Polish 10", id: 825450 },
+  "polish-11": { name: "11-Polish 11", id: 825451 },
+  "polish-12": { name: "12-Polish 12", id: 825688 },
+  "polish-13": { name: "13-Polish 13", id: 825743 },
+  "polish-14": { name: "14-Polish 14", id: 825870 },
+  "polish-15": { name: "15-Polish 15", id: 825928 },
+  "polish-16": { name: "16-Polish 16", id: 828839 },
+  "polish-17": { name: "17-Polish 17", id: 828376 },
+  "sf-2": { name: "SF -2", id: 111 },
+});
 
-export const ALL_CANONICAL_DEPARTMENTS = Object.freeze([
-  ...Array.from({ length: POLISH_DEPARTMENT_COUNT }, (_, i) => `polish-${i + 1}`),
-  "sf-2",
-]);
+/**
+ * 17, not 15. The Skylab roster runs Polish 1..17; the earlier value of 15 made
+ * normalizeDepartment() return "" for Polish 16 and 17, so live rows from those
+ * two departments were silently dropped as unrecognised.
+ *
+ * Separate from the payroll app's own department model, which still defines only
+ * POLISH_1..POLISH_15 (see backend `employees.department` and the manager roles).
+ * See APP_POLISH_DEPARTMENT_COUNT below.
+ */
+export const POLISH_DEPARTMENT_COUNT = 17;
+
+/**
+ * Departments the payroll application itself models (employees.department,
+ * POLISH_n_MANAGER roles). Skylab has 17; the app has 15. Stock from Polish 16
+ * and 17 is fetched and displayed, but has no payroll counterpart yet.
+ */
+export const APP_POLISH_DEPARTMENT_COUNT = 15;
+
+export const ALL_CANONICAL_DEPARTMENTS = Object.freeze(Object.keys(DEPARTMENT_ACCOUNTS));
 
 const CANONICAL_SET = new Set(ALL_CANONICAL_DEPARTMENTS);
 
 /** Canonical key -> the display name Skylab uses in its own UI/exports. */
-export const DEPARTMENT_DISPLAY_NAMES = Object.freeze({
-  ...Object.fromEntries(
-    Array.from({ length: POLISH_DEPARTMENT_COUNT }, (_, i) => [
-      `polish-${i + 1}`,
-      `${String(i + 1).padStart(2, "0")}-Polish ${i + 1}`,
-    ])
-  ),
-  "sf-2": "SF-2",
-});
+export const DEPARTMENT_DISPLAY_NAMES = Object.freeze(
+  Object.fromEntries(Object.entries(DEPARTMENT_ACCOUNTS).map(([key, v]) => [key, v.name]))
+);
+
+/** Canonical key -> Skylab AccountID, or null if not a known department. */
+export function canonicalToAccountId(canonicalKey) {
+  return DEPARTMENT_ACCOUNTS[canonicalKey]?.id ?? null;
+}
+
+/**
+ * Exact `DepartmentAccountName` values to send in an upstream filter.
+ *
+ * Skylab is inconsistent about this string: the sheet export writes
+ * "02-Polish 2" while the live API returns "Polish-2". Both forms are emitted
+ * so an upstream IN-match succeeds whichever the endpoint stores. Correctness
+ * never depends on this -- rows are re-checked locally by normalizeDepartment().
+ */
+export function upstreamDepartmentValues(canonicalKeys) {
+  const keys = (canonicalKeys || []).filter(isCanonicalDepartment);
+  const source = keys.length ? keys : ALL_CANONICAL_DEPARTMENTS;
+
+  const values = new Set();
+  for (const key of source) {
+    values.add(DEPARTMENT_ACCOUNTS[key].name);
+    const m = /^polish-(\d+)$/.exec(key);
+    if (m) values.add(`Polish-${m[1]}`);
+    else if (key === "sf-2") values.add("SF-2");
+  }
+  return [...values];
+}
 
 /** Canonical key -> internal app department code (POLISH_1 .. POLISH_15). */
 export function canonicalToAppDepartment(canonicalKey) {
   const match = /^polish-(\d+)$/.exec(canonicalKey || "");
-  if (match) return `POLISH_${match[1]}`;
+  if (match) {
+    const num = parseInt(match[1], 10);
+    // Polish 16/17 exist in Skylab but not in the payroll app -- do not invent a
+    // department code the backend would reject.
+    return num <= APP_POLISH_DEPARTMENT_COUNT ? `POLISH_${num}` : null;
+  }
   if (canonicalKey === "sf-2") return "POLISH_2"; // SF-2 is operationally Polish 2
   return null;
 }

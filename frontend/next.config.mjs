@@ -1,11 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   compress: true,
   poweredByHeader: false,
   outputFileTracingRoot: process.cwd(),
-  allowedDevOrigins: ['192.168.1.95'],
+  allowedDevOrigins: ['192.168.1.95', '192.168.1.205', 'localhost'],
   reactStrictMode: false,
-  swcMinify: true,
   devIndicators: {
     buildActivity: false,
     appIsrStatus: false,

@@ -9,7 +9,11 @@ function employeeLabel(employee) {
 export default function EmployeePicker({
   employees,
   value,
+  displayValue,
   onChange,
+  multiple = false,
+  checkedValues = [],
+  onCheckedValuesChange,
   placeholder = "Search employee code or name...",
   disabled = false,
   required = false,
@@ -27,7 +31,9 @@ export default function EmployeePicker({
     [employees, excludeId]
   );
 
-  const selectedEmployee = availableEmployees.find((employee) => String(employee.id) === String(value || ""));
+  const displayEmployeeId = value || displayValue || "";
+  const selectedEmployee = availableEmployees.find((employee) => String(employee.id) === String(displayEmployeeId));
+  const checkedSet = useMemo(() => new Set((checkedValues || []).map(String)), [checkedValues]);
 
   useEffect(() => {
     if (open) searchRef.current?.focus();
@@ -53,6 +59,16 @@ export default function EmployeePicker({
   function selectEmployee(employeeId) {
     onChange(employeeId);
     setOpen(false);
+    setQuery("");
+  }
+
+  function toggleEmployee(employeeId) {
+    const id = String(employeeId);
+    const next = checkedSet.has(id)
+      ? (checkedValues || []).map(String).filter((item) => item !== id)
+      : [...(checkedValues || []).map(String), id];
+    onCheckedValuesChange?.(next);
+    onChange(checkedSet.has(id) ? (next[next.length - 1] || "") : employeeId);
     setQuery("");
   }
 
@@ -99,24 +115,34 @@ export default function EmployeePicker({
             {allLabel && (
               <button
                 type="button"
-                className={`employee-picker-option${!value ? " active" : ""}`}
+                className={`employee-picker-option${!displayEmployeeId ? " active" : ""}`}
                 onMouseDown={(event) => { event.preventDefault(); selectEmployee(""); }}
               >
                 <span>
                   <span className="employee-picker-name">{allLabel}</span>
                 </span>
-                {!value && <span className="employee-picker-check">✓</span>}
+                {!displayEmployeeId && <span className="employee-picker-check">✓</span>}
               </button>
             )}
             {filteredEmployees.map((employee) => {
-              const selected = String(employee.id) === String(value || "");
+              const selected = String(employee.id) === String(displayEmployeeId);
+              const checked = checkedSet.has(String(employee.id));
               return (
                 <button
                   type="button"
                   key={employee.id}
                   className={`employee-picker-option${selected ? " active" : ""}`}
-                  onMouseDown={(event) => { event.preventDefault(); selectEmployee(employee.id); }}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    if (multiple) toggleEmployee(employee.id);
+                    else selectEmployee(employee.id);
+                  }}
                 >
+                  {multiple && (
+                    <span className={`employee-picker-checkbox${checked ? " checked" : ""}`}>
+                      {checked ? "✓" : ""}
+                    </span>
+                  )}
                   <span>
                     <span className="employee-picker-code">{employee.current_code || "No Code"}</span>
                     <span className="employee-picker-name">{employee.name}</span>

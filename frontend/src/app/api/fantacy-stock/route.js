@@ -8,46 +8,76 @@
  *   "live" - every record came from the Skylab API
  *   "mock" - ENABLE_FANTACY_MOCK_DATA=true; records are synthetic and tagged
  * The two are never mixed in a single response.
+ *
+ * ---------------------------------------------------------------------------
+ * Verified behaviour of Skylab's POST /api/stock (measured, not assumed):
+ *
+ *   1. `pageSize` and `pageNumber` are IGNORED. A request with pageSize:5
+ *      returned 68 records. The endpoint always returns the COMPLETE result set
+ *      for the given filters.
+ *   2. `IsLoadingAll` changes nothing -- true, false and omitted all behave
+ *      identically.
+ *   3. Consequently FILTERS ARE THE ONLY VOLUME CONTROL. With no department
+ *      filter the endpoint returned 1,668,406 records in a single response.
+ *      With a department filter it returned 68 in ~1.5s.
+ *   4. `select` is required and validated: an unknown column fails the request
+ *      with "No property or field 'X' exists in type 'Lot'". `Company` does NOT
+ *      exist; `CompanyID` does.
+ *   5. Only ONE access token is valid per user at a time. Authenticating again
+ *      invalidates the previous token, and in-flight requests using it start
+ *      returning 401. Do not share one credential across applications.
+ *
+ * Because upstream paging does not exist, this route fetches the full filtered
+ * set for a department scope, caches it briefly, and paginates locally. The
+ * client's skip/take interface is unchanged.
  */
 
 import { NextResponse } from "next/server";
 import https from "https";
-import { parseRequestedDepartments } from "@/lib/fantacyDeptMapper";
+import { parseRequestedDepartments, upstreamDepartmentValues } from "@/lib/fantacyDeptMapper";
 import { applyStockPipeline } from "@/lib/fantacyStockFilter";
+import { STOCK_SELECT_FIELDS } from "@/lib/fantacyStockFields";
 
 const API_BASE = process.env.SKYLAB_API_BASE;
 const USERNAME = process.env.SKYLAB_API_USERNAME;
 const PASSWORD = process.env.SKYLAB_API_PASSWORD;
+const GRANT_TYPE = process.env.SKYLAB_API_GRANT_TYPE || "password";
 
 /**
- * Optional strict company scoping.
+ * Optional company scoping on the `CompanyID` column.
  *
- * Live Skylab stock records carry NO company field (verified against the real
- * 86-record Polish-2 export and the Skylab sheet export). Company isolation is
- * therefore enforced by the API credential/tenant, not per row. Leave unset.
+ * Measured: every row returned by the current credential carries CompanyID 1,
+ * so the account is already company-scoped upstream and this filter is a no-op.
+ * It is kept because it costs nothing and becomes the guarantee if a broader
+ * credential is ever used. Leave unset unless a multi-company account is in use.
  *
- * Set it only if a company field is confirmed present in the response, in which
- * case filtering becomes strict exact-match and rows missing the field are
- * rejected. Never guess a value here.
+ * NOTE: the value is the numeric CompanyID (e.g. "1"), NOT a display name like
+ * "SKYLAB". There is no `Company` name column on type `Lot`.
  */
-const COMPANY_ID = process.env.SKYLAB_COMPANY_ID || null;
-
-/**
- * Row-level company filtering is SEPARATE from sending CompanyID upstream.
- *
- * Real Skylab records carry no company field, so filtering rows by company
- * would reject everything. Only enable this if the response is confirmed to
- * contain a company field.
- */
-const ENFORCE_ROW_COMPANY_FILTER = process.env.SKYLAB_ENFORCE_ROW_COMPANY_FILTER === "true";
-const ROW_COMPANY_FILTER = ENFORCE_ROW_COMPANY_FILTER ? COMPANY_ID : null;
+const COMPANY_ID = process.env.SKYLAB_COMPANY_ID?.trim() || null;
 
 const ENABLE_MOCK_DATA = process.env.ENABLE_FANTACY_MOCK_DATA === "true";
 const ALLOW_INSECURE_TLS = process.env.SKYLAB_ALLOW_INSECURE_TLS === "true";
 const EMIT_DIAGNOSTICS = process.env.SKYLAB_DIAGNOSTICS === "true";
 
-// Pagination guards. The old route accepted take=100000 and asserted a
-// hard-coded 2,000,000 total, which drove endless client accumulation.
+/**
+ * Lot statuses treated as live stock. Comma-separated override via
+ * SKYLAB_LOT_STATUS; an empty value disables the status filter.
+ */
+const LOT_STATUS =
+  process.env.SKYLAB_LOT_STATUS !== undefined
+    ? process.env.SKYLAB_LOT_STATUS.split(",").map((s) => s.trim()).filter(Boolean)
+    : ["STOCK", "MEMO"];
+
+/**
+ * Columns requested from Skylab. Defined in @/lib/fantacyStockFields so the
+ * probe script sends exactly what production sends -- see that file for the
+ * verified-present and verified-absent column lists.
+ */
+const SELECT_FIELDS = STOCK_SELECT_FIELDS;
+
+// Client-facing pagination guards. These bound OUR slice of an
+// already-fetched set; they are not sent upstream (upstream ignores paging).
 const MAX_TAKE = 5000;
 const DEFAULT_TAKE = 1000;
 const MAX_SKIP = 5_000_000;
@@ -61,13 +91,13 @@ const insecureTlsAllowed = ALLOW_INSECURE_TLS && process.env.NODE_ENV !== "produ
 /**
  * Requests go through `node:https`, NOT global fetch.
  *
- * Node's global fetch is undici, which silently IGNORES the `agent` option.
- * The previous implementation passed `agent` to fetch, so TLS verification was
- * never actually relaxed -- against a self-signed Skylab certificate every live
- * call failed and the route fell through to the synthetic generator. `node:https`
- * honours `rejectUnauthorized`, so the flag now does what it claims.
+ * Node's global fetch is undici, which silently IGNORES the `agent` option, so
+ * `rejectUnauthorized` passed to fetch never takes effect. `node:https` honours
+ * it, so the flag does what it claims.
+ *
+ * The timeout is generous: an unfiltered query can return >1.6M records.
  */
-function httpsRequest(url, { method = "GET", headers = {}, body } = {}) {
+function httpsRequest(url, { method = "GET", headers = {}, body, timeoutMs = 120000 } = {}) {
   return new Promise((resolve, reject) => {
     const target = new URL(url);
     const req = https.request(
@@ -82,7 +112,7 @@ function httpsRequest(url, { method = "GET", headers = {}, body } = {}) {
           ...(body ? { "Content-Length": Buffer.byteLength(body) } : {}),
         },
         rejectUnauthorized: !insecureTlsAllowed,
-        timeout: 60000,
+        timeout: timeoutMs,
       },
       (res) => {
         const chunks = [];
@@ -93,7 +123,9 @@ function httpsRequest(url, { method = "GET", headers = {}, body } = {}) {
       }
     );
 
-    req.on("timeout", () => req.destroy(new Error("Skylab request timed out after 60s.")));
+    req.on("timeout", () =>
+      req.destroy(new Error(`Skylab request timed out after ${Math.round(timeoutMs / 1000)}s.`))
+    );
     // Surface the TLS/DNS/connection code -- this is what distinguishes a bad
     // certificate from a wrong host from refused credentials.
     req.on("error", (err) => reject(new Error(err.code ? `${err.code}: ${err.message}` : err.message)));
@@ -115,12 +147,13 @@ async function getAuthToken() {
 
   const res = await httpsRequest(`${API_BASE}/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
     body: new URLSearchParams({
-      grant_type: "password",
+      grant_type: GRANT_TYPE,
       username: USERNAME,
       password: PASSWORD,
     }).toString(),
+    timeoutMs: 30000,
   });
 
   if (res.status !== 200) {
@@ -157,29 +190,32 @@ const NO_CACHE_HEADERS = {
   Expires: "0",
 };
 
-// High-performance server response cache (60s TTL)
-const RESPONSE_CACHE_TTL_MS = 60 * 1000;
-const responseCache = new Map();
+/**
+ * Cache of FULL filtered result sets, keyed by department scope.
+ *
+ * Upstream returns everything matching the filters, so re-fetching per client
+ * page would repeat the entire transfer. One fetch serves every page within the
+ * TTL. Kept short so "real time" still means minutes-fresh, not hours.
+ */
+const SCOPE_CACHE_TTL_MS = 60 * 1000;
+const scopeCache = new Map();
 
-function getCachedStockResponse(cacheKey) {
-  const entry = responseCache.get(cacheKey);
+function getCachedScope(key) {
+  const entry = scopeCache.get(key);
   if (!entry) return null;
   if (Date.now() > entry.expiresAt) {
-    responseCache.delete(cacheKey);
+    scopeCache.delete(key);
     return null;
   }
-  return entry.data;
+  return entry;
 }
 
-function setCachedStockResponse(cacheKey, data) {
-  if (responseCache.size > 50) {
-    const firstKey = responseCache.keys().next().value;
-    if (firstKey) responseCache.delete(firstKey);
+function setCachedScope(key, records, diagnostics) {
+  if (scopeCache.size > 20) {
+    const firstKey = scopeCache.keys().next().value;
+    if (firstKey) scopeCache.delete(firstKey);
   }
-  responseCache.set(cacheKey, {
-    data,
-    expiresAt: Date.now() + RESPONSE_CACHE_TTL_MS,
-  });
+  scopeCache.set(key, { records, diagnostics, expiresAt: Date.now() + SCOPE_CACHE_TTL_MS });
 }
 
 function errorResponse({ status, message, skip, take, diagnostics }) {
@@ -205,82 +241,113 @@ function errorResponse({ status, message, skip, take, diagnostics }) {
 }
 
 /**
- * TEMPORARY diagnostic: Skylab's /api/stock throws a bare .NET
- * NullReferenceException, which names no missing field. `requireTotalCount`
- * identifies this as a DevExtreme.AspNet.Data backend, so the candidate request
- * shapes are a known, finite set rather than open-ended guesses.
+ * Build the /api/stock request body.
  *
- * Hit /api/fantacy-stock?probe=1 to try each shape and report which returns 200.
- * DELETE this function and its branch once the correct shape is known.
+ * Skylab's documented envelope: `request` carrying `select` plus a declarative
+ * `filters` tree. Filters combine with implicit AND.
+ *
+ * pageSize/pageNumber are sent for protocol completeness but are known to be
+ * ignored -- never rely on them to bound the response.
  */
-function candidateRequestShapes(skip, take) {
-  const devExtremeFull = {
-    skip,
-    take,
-    requireTotalCount: true,
-    requireGroupCount: false,
-    isCountQuery: false,
-    isSummaryQuery: false,
-    sort: [],
-    filter: [],
-    group: null,
-    select: [],
-    totalSummary: [],
-    groupSummary: [],
-  };
+function buildStockRequest(departments) {
+  const filters = [];
 
-  return [
-    { name: "current (take/skip/requireTotalCount)", body: { take, skip, requireTotalCount: true } },
-    { name: "devextreme-full", body: devExtremeFull },
-    { name: "devextreme-nulls", body: { ...devExtremeFull, sort: null, filter: null, select: null, totalSummary: null, groupSummary: null } },
-    { name: "wrapped-loadOptions", body: { loadOptions: devExtremeFull } },
-    { name: "minimal (take/skip)", body: { take, skip } },
-    { name: "empty-object", body: {} },
-  ];
-}
-
-async function runShapeProbe(skip, take) {
-  const token = await getAuthToken();
-  const results = [];
-
-  for (const shape of candidateRequestShapes(skip, take)) {
-    try {
-      const res = await httpsRequest(`${API_BASE}/api/stock`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(shape.body),
-      });
-
-      let recordCount = null;
-      let topLevelKeys = null;
-      if (res.status === 200) {
-        try {
-          const parsed = JSON.parse(res.text);
-          const items = Array.isArray(parsed) ? parsed : parsed?.data;
-          recordCount = Array.isArray(items) ? items.length : null;
-          topLevelKeys = Array.isArray(parsed) ? ["<array>"] : Object.keys(parsed || {});
-        } catch {
-          topLevelKeys = ["<non-JSON>"];
-        }
-      }
-
-      results.push({
-        shape: shape.name,
-        status: res.status,
-        recordCount,
-        topLevelKeys,
-        upstream: res.status === 200 ? null : String(res.text || "").slice(0, 160),
-      });
-    } catch (err) {
-      results.push({ shape: shape.name, status: "request-error", upstream: err.message.slice(0, 160) });
-    }
+  if (COMPANY_ID) {
+    filters.push({ fieldName: "CompanyID", value: COMPANY_ID });
+  }
+  if (LOT_STATUS.length) {
+    filters.push({ fieldName: "LotStatusDB", value: LOT_STATUS });
   }
 
-  return results;
+  // ALWAYS present. Without a department filter the endpoint returns the entire
+  // catalogue (measured: 1,668,406 rows). An empty `departments` request means
+  // "all OUR departments", never "everything".
+  filters.push({
+    fieldName: "DepartmentAccountName",
+    value: upstreamDepartmentValues(departments),
+  });
+
+  return {
+    requestType: "GET",
+    request: { select: SELECT_FIELDS, filters, IsLoadingAll: true },
+    pageSize: 0,
+    pageNumber: 0,
+  };
+}
+
+/** Fetch and filter the complete result set for a department scope. */
+async function fetchScope(departments) {
+  const token = await getAuthToken();
+  const requestBody = buildStockRequest(departments);
+
+  let res = await httpsRequest(`${API_BASE}/api/stock`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  // Skylab invalidates a token when the same user authenticates elsewhere, so a
+  // 401 mid-session is expected rather than exceptional. Re-auth once.
+  if (res.status === 401) {
+    cachedToken = null;
+    tokenExpiresAt = 0;
+    const freshToken = await getAuthToken();
+    res = await httpsRequest(`${API_BASE}/api/stock`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${freshToken}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+  }
+
+  if (res.status !== 200) {
+    const err = new Error(`Skylab stock request failed (HTTP ${res.status}).`);
+    // Upstream stock-endpoint error text. Safe: this endpoint never echoes
+    // credentials (unlike /token, whose body is deliberately never read).
+    err.diagnostics = {
+      requestBody,
+      upstreamBody: String(res.text || "").slice(0, 600),
+    };
+    throw err;
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(res.text);
+  } catch {
+    throw new Error("Skylab returned a non-JSON stock response.");
+  }
+
+  let rawItems;
+  if (Array.isArray(payload)) {
+    rawItems = payload;
+  } else if (payload && Array.isArray(payload.data)) {
+    rawItems = payload.data;
+  } else {
+    const err = new Error("Skylab returned an unrecognised stock response shape.");
+    err.diagnostics = {
+      topLevelType: Array.isArray(payload) ? "array" : typeof payload,
+      topLevelKeys: payload && typeof payload === "object" ? Object.keys(payload) : [],
+    };
+    throw err;
+  }
+
+  // Re-apply company and department filtering locally. Intentional, not
+  // redundant: if Skylab ever ignores or drops a filter it does not recognise,
+  // this is what stops unrelated rows reaching the client.
+  const { records, diagnostics } = applyStockPipeline(rawItems, {
+    company: COMPANY_ID,
+    departments,
+  });
+
+  return { records, diagnostics: { ...diagnostics, upstreamRows: rawItems.length } };
 }
 
 export async function GET(request) {
@@ -290,216 +357,70 @@ export async function GET(request) {
   const departments = parseRequestedDepartments(searchParams.get("departments"));
   const forceFresh = searchParams.get("fresh") === "1" || searchParams.get("_t");
 
-  const cacheKey = `${skip}_${take}_${departments.join(",")}_${ROW_COMPANY_FILTER || ""}`;
-
-  if (!forceFresh) {
-    const cachedData = getCachedStockResponse(cacheKey);
-    if (cachedData) {
-      return NextResponse.json(cachedData, { headers: NO_CACHE_HEADERS });
-    }
-  }
-
-  /**
-   * TEMPORARY control test. Every request body returns the same
-   * NullReferenceException, which is ALSO what a catch-all error handler would
-   * return for a wrong path. Probing a deliberately nonsense path reveals which:
-   *   nonsense -> 404  => /api/stock really exists; the 500 is account/permission
-   *   nonsense -> 500  => their handler masks everything; conclusions unreliable
-   * DELETE with the other probe code.
-   */
-  if (searchParams.get("probe") === "2" && !ENABLE_MOCK_DATA) {
-    if (missingCredentials()) {
-      return NextResponse.json({ error: "Skylab API is not configured." }, { status: 500 });
-    }
-    try {
-      const token = await getAuthToken();
-      const attempts = [
-        { method: "POST", path: "/api/stock" },
-        { method: "GET", path: "/api/stock" },
-        { method: "POST", path: "/api/definitely-not-a-real-endpoint-xyz" },
-        { method: "GET", path: "/api/definitely-not-a-real-endpoint-xyz" },
-      ];
-      const results = [];
-      for (const attempt of attempts) {
-        try {
-          const res = await httpsRequest(`${API_BASE}${attempt.path}`, {
-            method: attempt.method,
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            ...(attempt.method === "POST"
-              ? { body: JSON.stringify({ skip: 0, take: 5, requireTotalCount: true }) }
-              : {}),
-          });
-          results.push({
-            call: `${attempt.method} ${attempt.path}`,
-            status: res.status,
-            body: String(res.text || "").slice(0, 150),
-          });
-        } catch (err) {
-          results.push({ call: `${attempt.method} ${attempt.path}`, status: "error", body: err.message.slice(0, 150) });
-        }
-      }
-      return NextResponse.json({ endpointProbe: results });
-    } catch (err) {
-      return NextResponse.json({ endpointProbe: null, error: err.message }, { status: 502 });
-    }
-  }
-
-  if (searchParams.get("probe") === "1" && !ENABLE_MOCK_DATA) {
-    if (missingCredentials()) {
-      return NextResponse.json({ error: "Skylab API is not configured." }, { status: 500 });
-    }
-    try {
-      return NextResponse.json({ probe: await runShapeProbe(skip, Math.min(take, 5)) });
-    } catch (err) {
-      return NextResponse.json({ probe: null, error: err.message }, { status: 502 });
-    }
-  }
+  // Keyed by SCOPE, not by page: one upstream fetch serves every page.
+  const scopeKey = `${departments.join(",")}_${COMPANY_ID || ""}_${LOT_STATUS.join(",")}`;
 
   try {
-    let rawItems = [];
-    let reportedTotal = null;
-    let source = "live";
+    let scope = forceFresh ? null : getCachedScope(scopeKey);
 
-    if (ENABLE_MOCK_DATA) {
-      // Development mode only. Never reached in a normal production build.
-      source = "mock";
-      const { generateMockStock } = await import("@/lib/dev/fantacyMockStock");
-      rawItems = generateMockStock(skip, take, 5000);
-      reportedTotal = 5000;
-    } else {
-      if (missingCredentials()) {
-        return errorResponse({
-          status: 500,
-          message:
-            "Skylab API is not configured. Set SKYLAB_API_BASE, SKYLAB_API_USERNAME and SKYLAB_API_PASSWORD.",
-          skip,
-          take,
-        });
-      }
-
-      // Skylab's /api/stock throws a .NET NullReferenceException when expected
-      // parameters are absent, so send the full shape. CompanyID is included
-      // when configured -- server-side company scoping is stronger than
-      // filtering rows after the fact.
-      const stockRequestBody = {
-        take,
-        skip,
-        requireTotalCount: true,
-        ...(COMPANY_ID ? { CompanyID: COMPANY_ID } : {}),
-      };
-
-      const token = await getAuthToken();
-      const stockRes = await httpsRequest(`${API_BASE}/api/stock`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(stockRequestBody),
-      });
-
-      if (stockRes.status !== 200) {
-        // Drop a stale token so the next attempt re-authenticates.
-        if (stockRes.status === 401) {
-          cachedToken = null;
-          tokenExpiresAt = 0;
-        }
-        return errorResponse({
-          status: 502,
-          message: `Skylab stock request failed (HTTP ${stockRes.status}).`,
-          skip,
-          take,
-          // Upstream stock-endpoint error text. Safe: this endpoint never echoes
-          // credentials (unlike /token, whose body is deliberately never read).
-          diagnostics: {
-            requestBody: stockRequestBody,
-            upstreamBody: String(stockRes.text || "").slice(0, 600),
-          },
-        });
-      }
-
-      let payload;
-      try {
-        payload = JSON.parse(stockRes.text);
-      } catch {
-        return errorResponse({
-          status: 502,
-          message: "Skylab returned a non-JSON stock response.",
-          skip,
-          take,
-        });
-      }
-
-      if (Array.isArray(payload)) {
-        rawItems = payload;
-      } else if (payload && Array.isArray(payload.data)) {
-        rawItems = payload.data;
-        reportedTotal = Number.isFinite(payload.totalCount) ? payload.totalCount : null;
+    if (!scope) {
+      if (ENABLE_MOCK_DATA) {
+        // Development mode only. Never reached in a normal production build.
+        const { generateMockStock } = await import("@/lib/dev/fantacyMockStock");
+        const mock = generateMockStock(0, 5000, 5000);
+        scope = { records: mock, diagnostics: { received: mock.length, finalCount: mock.length } };
       } else {
-        return errorResponse({
-          status: 502,
-          message: "Skylab returned an unrecognised stock response shape.",
-          skip,
-          take,
-          diagnostics: {
-            topLevelType: Array.isArray(payload) ? "array" : typeof payload,
-            topLevelKeys: payload && typeof payload === "object" ? Object.keys(payload) : [],
-          },
-        });
+        if (missingCredentials()) {
+          return errorResponse({
+            status: 500,
+            message:
+              "Skylab API is not configured. Set SKYLAB_API_BASE, SKYLAB_API_USERNAME and SKYLAB_API_PASSWORD.",
+            skip,
+            take,
+          });
+        }
+        scope = await fetchScope(departments);
       }
+      setCachedScope(scopeKey, scope.records, scope.diagnostics);
     }
 
-    // Company -> department -> dedupe. Zero matches stays zero: there is no
-    // "if empty, return everything" fallback anywhere in this path.
-    const { records, diagnostics } = applyStockPipeline(rawItems, {
-      companyId: ROW_COMPANY_FILTER,
-      departments,
-    });
-
-    // hasMore is driven by what the API actually reported, never by a constant.
-    // Falling back to "a full raw page implies another page" keeps pagination
-    // correct when the endpoint omits totalCount.
-    const pageWasFull = rawItems.length >= take;
-    const hasMore =
-      reportedTotal !== null ? skip + rawItems.length < reportedTotal : pageWasFull;
+    const all = scope.records;
+    // Pagination is OURS: upstream has already returned everything.
+    const page = all.slice(skip, skip + take);
+    const nextSkip = skip + page.length;
+    const hasMore = nextSkip < all.length;
 
     if (EMIT_DIAGNOSTICS) {
       console.log("[fantacy-stock] page diagnostics", {
         skip,
         take,
-        source,
         requestedDepartments: departments,
-        ...diagnostics,
+        scopeTotal: all.length,
+        ...scope.diagnostics,
       });
     }
 
-    const responseData = {
-      success: true,
-      source,
-      data: records,
-      records,
-      batchCount: records.length,
-      skip,
-      take,
-      // Counts describe the FILTERED real result, not the upstream catalogue.
-      filteredCount: records.length,
-      totalCount: reportedTotal,
-      rawPageCount: rawItems.length,
-      hasMore,
-      nextSkip: skip + rawItems.length,
-      lastUpdated: new Date().toISOString(),
-      error: null,
-      ...(EMIT_DIAGNOSTICS ? { diagnostics } : {}),
-    };
-
-    setCachedStockResponse(cacheKey, responseData);
-
-    return NextResponse.json(responseData, { headers: NO_CACHE_HEADERS });
+    return NextResponse.json(
+      {
+        success: true,
+        source: ENABLE_MOCK_DATA ? "mock" : "live",
+        data: page,
+        records: page,
+        batchCount: page.length,
+        skip,
+        take,
+        // Counts describe the FILTERED real result, not the upstream catalogue.
+        filteredCount: page.length,
+        totalCount: all.length,
+        rawPageCount: page.length,
+        hasMore,
+        nextSkip,
+        lastUpdated: new Date().toISOString(),
+        error: null,
+        ...(EMIT_DIAGNOSTICS ? { diagnostics: scope.diagnostics } : {}),
+      },
+      { headers: NO_CACHE_HEADERS }
+    );
   } catch (err) {
     console.error("[fantacy-stock] proxy error:", err.message);
     return errorResponse({
@@ -507,6 +428,7 @@ export async function GET(request) {
       message: err.message || "Skylab synchronisation failed.",
       skip,
       take,
+      diagnostics: err.diagnostics,
     });
   }
 }

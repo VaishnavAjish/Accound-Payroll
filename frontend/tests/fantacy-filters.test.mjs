@@ -21,6 +21,8 @@ import {
   isCanonicalDepartment,
   ALL_CANONICAL_DEPARTMENTS,
   canonicalToAppDepartment,
+  DEPARTMENT_ACCOUNTS,
+  upstreamDepartmentValues,
 } from "../src/lib/fantacyDeptMapper.js";
 
 import {
@@ -151,13 +153,102 @@ test("parseRequestedDepartments keeps canonical entries and drops junk", () => {
   assert.deepEqual(parseRequestedDepartments("Polish-3,Polish-3"), ["polish-3"]);
 });
 
-test("canonical department list covers Polish 1-15 plus SF-2", () => {
-  assert.equal(ALL_CANONICAL_DEPARTMENTS.length, 16);
+test("canonical department list covers Polish 1-17 plus SF-2", () => {
+  // 17 Polish departments + SF-2, per the Skylab account export. This was 16
+  // (Polish 1-15 + SF-2), which made Polish 16 and 17 unrecognised, so their
+  // live records were dropped by the department filter.
+  assert.equal(ALL_CANONICAL_DEPARTMENTS.length, 18);
   assert.ok(ALL_CANONICAL_DEPARTMENTS.every(isCanonicalDepartment));
+  assert.ok(ALL_CANONICAL_DEPARTMENTS.includes("polish-16"));
+  assert.ok(ALL_CANONICAL_DEPARTMENTS.includes("polish-17"));
+  assert.ok(ALL_CANONICAL_DEPARTMENTS.includes("sf-2"));
+});
+
+test("Polish 16 and 17 normalize instead of being dropped", () => {
+  assert.equal(normalizeDepartment("Polish-16"), "polish-16");
+  assert.equal(normalizeDepartment("17-Polish 17"), "polish-17");
+  // 18 is beyond the roster and must still be rejected.
+  assert.equal(normalizeDepartment("Polish-18"), "");
+});
+
+test("every roster department carries its exact Skylab account name and id", () => {
+  assert.equal(DEPARTMENT_ACCOUNTS["polish-1"].id, 107);
+  // IDs are not ordered by department number -- Polish 2 is lower than Polish 1.
+  assert.equal(DEPARTMENT_ACCOUNTS["polish-2"].id, 106);
+  assert.equal(DEPARTMENT_ACCOUNTS["polish-17"].id, 828376);
+  assert.equal(DEPARTMENT_ACCOUNTS["sf-2"].name, "SF -2");
+  // The exported "SF -2" spelling must still normalize.
+  assert.equal(normalizeDepartment(DEPARTMENT_ACCOUNTS["sf-2"].name), "sf-2");
+});
+
+test("upstream department values emit both spellings Skylab uses", () => {
+  const values = upstreamDepartmentValues(["polish-2"]);
+  assert.ok(values.includes("02-Polish 2"), "sheet-export form");
+  assert.ok(values.includes("Polish-2"), "live-API form");
+
+  // No selection means all OUR departments, never all departments in the tenant.
+  assert.equal(upstreamDepartmentValues([]).length, 36); // 18 departments x 2 forms
 });
 
 // ---------------------------------------------------------------------------
 section("Company filtering");
+
+test("the real field name 'Company' is read", () => {
+  // The prior implementation looked only for CompanyID/Company_ID/companyId, so
+  // every record read as "<absent>" and the filter could never match anything.
+  const { kept, rejected } = filterByCompany(
+    [
+      liveRecord(1, "Polish-2", { Company: "SKYLAB" }),
+      liveRecord(2, "Polish-2", { Company: "MAUNI" }),
+      liveRecord(3, "Polish-2", { Company: "THE DIAMOND LAB" }),
+    ],
+    "SKYLAB"
+  );
+  assert.equal(kept.length, 1);
+  assert.equal(rejected, 2);
+  assert.equal(kept[0].LotID, "1");
+});
+
+test("companies sharing a department name are separated", () => {
+  // The reported bug: several companies use "02-Polish 2", so filtering on
+  // department alone returns all of them and the result set looks inflated.
+  const batch = [
+    liveRecord(1, "02-Polish 2", { Company: "SKYLAB" }),
+    liveRecord(2, "02-Polish 2", { Company: "MAUNI" }),
+    liveRecord(3, "02-Polish 2", { Company: "THE DIAMOND LAB" }),
+    liveRecord(4, "02-Polish 2", { Company: "SKYLAB" }),
+  ];
+
+  const deptOnly = filterByDepartment(batch, ["polish-2"]);
+  assert.equal(deptOnly.kept.length, 4, "department alone cannot separate them");
+
+  const { records } = applyStockPipeline(batch, { company: "SKYLAB", departments: ["polish-2"] });
+  assert.equal(records.length, 2);
+  assert.ok(records.every((r) => r.Company === "SKYLAB"));
+});
+
+test("company matching is case-insensitive but not fuzzy", () => {
+  const items = [
+    liveRecord(1, "Polish-2", { Company: "skylab" }),
+    liveRecord(2, "Polish-2", { Company: "SkyLab" }),
+    liveRecord(3, "Polish-2", { Company: "SKYLAB DIAMOND" }),
+    liveRecord(4, "Polish-2", { Company: "THE SKYLAB" }),
+  ];
+  const { kept } = filterByCompany(items, "SKYLAB");
+  assert.equal(kept.length, 2, "case variants match; substrings do not");
+});
+
+test("rows with no company field are rejected and counted", () => {
+  const { kept, missingField } = filterByCompany(
+    [
+      liveRecord(1, "Polish-2", { Company: "SKYLAB" }),
+      liveRecord(2, "Polish-2"), // no Company field at all
+    ],
+    "SKYLAB"
+  );
+  assert.equal(kept.length, 1);
+  assert.equal(missingField, 1);
+});
 
 test("no company filter is applied when no company id is configured", () => {
   const items = [liveRecord(1, "Polish-3"), liveRecord(2, "Polish-3")];

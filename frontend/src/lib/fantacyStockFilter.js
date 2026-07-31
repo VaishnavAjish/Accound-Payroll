@@ -44,21 +44,33 @@ export function isSyntheticRecord(item) {
 }
 
 /**
- * Company identity is NOT present on Skylab stock records.
+ * Company identity on a Skylab stock record is `CompanyID`, a NUMBER.
  *
- * Verified against the real Polish-2 export (86 records) and the Skylab sheet
- * export: neither carries `CompanyID` or `CompanyName`. Company scoping is a
- * property of the API credential/tenant, not of the row.
+ * Established directly against the live API, which validates `select` and names
+ * any unknown column:
+ *   - `Company`     -> "No property or field 'Company' exists in type 'Lot'"
+ *   - `CompanyName` -> same rejection
+ *   - `CompanyID`   -> accepted; every row returned by the current credential
+ *                      carries CompanyID 1
  *
- * The previous implementation defaulted a missing CompanyID to "2139" and then
- * overwrote every row with CompanyID:"2139"/CompanyName:"Skylab Diamond" --
- * which passed everything and fabricated provenance. Both behaviours are gone.
+ * So the "SKYLAB / MAUNI / THE DIAMOND LAB" names in the Skylab UI field picker
+ * are NOT available on this entity -- only the numeric id is. Configure
+ * SKYLAB_COMPANY_ID with the number, never the display name.
  *
- * If a company field ever does appear, set SKYLAB_COMPANY_ID and this becomes a
- * strict exact-match filter. Records missing the field are then rejected, not
- * admitted.
+ * The current credential is already company-scoped upstream (a single CompanyID
+ * across 1.6M+ rows), so this filter is normally a no-op. It is retained as the
+ * guarantee if a broader, multi-company credential is ever used.
+ *
+ * `CompanyID` is listed first: it is the verified field. The rest are tolerated
+ * aliases in case another endpoint spells it differently.
  */
-export const COMPANY_ID_FIELDS = Object.freeze(["CompanyID", "Company_ID", "companyId"]);
+export const COMPANY_ID_FIELDS = Object.freeze([
+  "CompanyID",
+  "Company_ID",
+  "companyId",
+  "Company",
+  "CompanyName",
+]);
 
 export function readCompanyId(item) {
   if (!item || typeof item !== "object") return null;
@@ -72,24 +84,42 @@ export function readCompanyId(item) {
 }
 
 /**
+ * Strict company isolation.
+ *
+ * Matching is case-insensitive ("SKYLAB" / "Skylab" are the same company) but
+ * otherwise exact -- no prefix or substring matching, so "SKYLAB" can never
+ * admit a differently-named tenant.
+ *
+ * A record with NO company field is REJECTED when a filter is active. Company
+ * isolation is a correctness boundary: admitting rows of unknown provenance
+ * would reintroduce exactly the cross-company bleed this filter exists to stop.
+ *
  * @param {object[]} items
- * @param {string|null} expectedCompanyId  null/"" => company filtering disabled
- * @returns {{ kept: object[], rejected: number, byCompany: Record<string, number>, applied: boolean }}
+ * @param {string|null} expectedCompany  null/"" => company filtering disabled
+ * @returns {{ kept: object[], rejected: number, byCompany: Record<string, number>, applied: boolean, missingField: number }}
  */
-export function filterByCompany(items, expectedCompanyId) {
+export function filterByCompany(items, expectedCompany) {
   const byCompany = {};
+  let missingField = 0;
+
   for (const item of items) {
-    const key = readCompanyId(item) ?? "<absent>";
-    byCompany[key] = (byCompany[key] || 0) + 1;
+    const key = readCompanyId(item);
+    if (key === null) missingField += 1;
+    const tallyKey = key ?? "<absent>";
+    byCompany[tallyKey] = (byCompany[tallyKey] || 0) + 1;
   }
 
-  const expected = expectedCompanyId ? String(expectedCompanyId).trim() : "";
+  const expected = expectedCompany ? String(expectedCompany).trim().toUpperCase() : "";
   if (!expected) {
-    return { kept: items, rejected: 0, byCompany, applied: false };
+    return { kept: items, rejected: 0, byCompany, applied: false, missingField };
   }
 
-  const kept = items.filter((item) => readCompanyId(item) === expected);
-  return { kept, rejected: items.length - kept.length, byCompany, applied: true };
+  const kept = items.filter((item) => {
+    const actual = readCompanyId(item);
+    return actual !== null && actual.toUpperCase() === expected;
+  });
+
+  return { kept, rejected: items.length - kept.length, byCompany, applied: true, missingField };
 }
 
 /**
@@ -165,10 +195,11 @@ export function dedupeRecords(items, seenKeys = new Set()) {
  * Full pipeline. Returns the final records plus a diagnostics object that is
  * safe to log and safe to return to the client (counts only).
  */
-export function applyStockPipeline(rawItems, { companyId, departments } = {}) {
+export function applyStockPipeline(rawItems, { company: expectedCompany, companyId, departments } = {}) {
   const received = Array.isArray(rawItems) ? rawItems : [];
 
-  const company = filterByCompany(received, companyId);
+  // `companyId` is the legacy parameter name, kept so older callers keep working.
+  const company = filterByCompany(received, expectedCompany ?? companyId);
   const department = filterByDepartment(company.kept, departments);
   const deduped = dedupeRecords(department.kept);
 
@@ -178,7 +209,11 @@ export function applyStockPipeline(rawItems, { companyId, departments } = {}) {
       received: received.length,
       companyFilterApplied: company.applied,
       rejectedByCompany: company.rejected,
-      countsByCompanyId: company.byCompany,
+      // Rows carrying no company field at all. Non-zero while a filter is active
+      // means upstream is returning records we cannot attribute -- investigate
+      // before trusting the result.
+      missingCompanyField: company.missingField,
+      countsByCompany: company.byCompany,
       rejectedByDepartment: department.rejected,
       countsByDepartment: department.byDepartment,
       duplicatesDropped: deduped.duplicates,

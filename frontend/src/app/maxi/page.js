@@ -28,6 +28,7 @@ export function MaxiInner({ overridePeriodId }) {
   const [form, setForm] = useState(EMPTY);
   const [formError, setFormError] = useState("");
   const [filterEmpId, setFilterEmpId] = useState("");
+  const [openEmployeeIds, setOpenEmployeeIds] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
@@ -133,7 +134,7 @@ export function MaxiInner({ overridePeriodId }) {
               onChange={(e) => setSearchTerm(e.target.value)} 
               style={{ width: 200 }} 
             />
-            <EmployeeEntryTabs employees={employees} activeEmployeeId={filterEmpId} onActiveEmployeeChange={setFilterEmpId} variant="picker" />
+            <EmployeeEntryTabs employees={employees} activeEmployeeId={filterEmpId} onActiveEmployeeChange={setFilterEmpId} openEmployeeIds={openEmployeeIds} onOpenEmployeeIdsChange={setOpenEmployeeIds} variant="picker" />
             <button className="btn btn-secondary" onClick={handleExport}>Export</button>
             <button className="btn btn-primary" onClick={() => { setForm(EMPTY); setFormError(""); setShowModal(true); }} disabled={isActivePeriodClosed}>+ New Entry</button>
           </div>
@@ -150,13 +151,13 @@ export function MaxiInner({ overridePeriodId }) {
             onChange={(e) => setSearchTerm(e.target.value)} 
             style={{ width: 220 }} 
           />
-          <EmployeeEntryTabs employees={employees} activeEmployeeId={filterEmpId} onActiveEmployeeChange={setFilterEmpId} variant="picker" />
+          <EmployeeEntryTabs employees={employees} activeEmployeeId={filterEmpId} onActiveEmployeeChange={setFilterEmpId} openEmployeeIds={openEmployeeIds} onOpenEmployeeIdsChange={setOpenEmployeeIds} variant="picker" />
           <button className="btn btn-secondary" onClick={handleExport}>Export</button>
           <button className="btn btn-primary" onClick={() => { setForm(EMPTY); setFormError(""); setShowModal(true); }} disabled={isActivePeriodClosed}>+ New Entry</button>
         </div>
       )}
 
-      <EmployeeEntryTabs employees={employees} activeEmployeeId={filterEmpId} onActiveEmployeeChange={setFilterEmpId} variant="tabs" />
+      <EmployeeEntryTabs employees={employees} activeEmployeeId={filterEmpId} onActiveEmployeeChange={setFilterEmpId} openEmployeeIds={openEmployeeIds} onOpenEmployeeIdsChange={setOpenEmployeeIds} variant="tabs" />
 
       {isActivePeriodClosed && (
         <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 500 }}>

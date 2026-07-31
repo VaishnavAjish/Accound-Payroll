@@ -1,0 +1,1 @@
+globalThis.__RSC_MANIFEST=(globalThis.__RSC_MANIFEST||{});globalThis.__RSC_MANIFEST["/api/fantacy-stock/route"]={"moduleLoading":{"prefix":"/_next/"},"ssrModuleMapping":{},"edgeSSRModuleMapping":{},"clientModules":{},"entryCSSFiles":{"Z:\\Account Payroll\\frontend\\src\\app\\api\\fantacy-stock\\route":[]},"rscModuleMapping":{},"edgeRscModuleMapping":{}};

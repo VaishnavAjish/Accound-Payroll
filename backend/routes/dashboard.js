@@ -7,14 +7,50 @@ const router = express.Router();
 
 router.use(requireAuth, requireRole(...staffRoles()), requirePermission('view_dashboard'));
 
+const OFFICE_START_MINUTES = 9 * 60;
+const OFFICE_END_MINUTES = 20 * 60;
+const WORK_HOURS_START_PERIOD = '2026-08-01';
+
+function parseDateParts(value) {
+  const match = String(value || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  return { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };
+}
+
+function dateSerial(value) {
+  const parts = parseDateParts(value);
+  if (!parts) return null;
+  return Math.floor(Date.UTC(parts.year, parts.month - 1, parts.day) / 86400000);
+}
+
+function timeMinutes(value, fallbackMinutes) {
+  const match = String(value || '').slice(0, 8).match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return fallbackMinutes;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return fallbackMinutes;
+  return (hours * 60) + minutes;
+}
+
 function entryWorkHours(entry) {
   if (!entry.issue_date || !entry.received_date) return 0;
-  const issueTime = entry.issue_time ? String(entry.issue_time).slice(0, 8) : '00:00:00';
-  const receivedTime = entry.received_time ? String(entry.received_time).slice(0, 8) : '00:00:00';
-  const issueAt = new Date(`${entry.issue_date}T${issueTime}`);
-  const receivedAt = new Date(`${entry.received_date}T${receivedTime}`);
-  if (Number.isNaN(issueAt.getTime()) || Number.isNaN(receivedAt.getTime())) return 0;
-  return Math.max(0, (receivedAt - issueAt) / 3600000);
+  const issueDay = dateSerial(entry.issue_date);
+  const receivedDay = dateSerial(entry.received_date);
+  if (issueDay === null || receivedDay === null || receivedDay < issueDay) return 0;
+
+  const issueMinute = timeMinutes(entry.issue_time, OFFICE_START_MINUTES);
+  const receivedMinute = timeMinutes(entry.received_time, OFFICE_END_MINUTES);
+  let workedMinutes = 0;
+
+  for (let day = issueDay; day <= receivedDay; day += 1) {
+    const dayStart = day === issueDay ? issueMinute : OFFICE_START_MINUTES;
+    const dayEnd = day === receivedDay ? receivedMinute : OFFICE_END_MINUTES;
+    const clampedStart = Math.max(dayStart, OFFICE_START_MINUTES);
+    const clampedEnd = Math.min(dayEnd, OFFICE_END_MINUTES);
+    workedMinutes += Math.max(0, clampedEnd - clampedStart);
+  }
+
+  return workedMinutes / 60;
 }
 
 router.get('/stats', async (req, res) => {
@@ -134,6 +170,9 @@ router.get('/employee-summary', async (req, res) => {
     return res.status(err.status || 403).json({ error: err.message });
   }
 
+  const selectedPeriod = await db('periods').where({ id: periodId }).first();
+  const shouldCalculateWorkHours = selectedPeriod?.start_date >= WORK_HOURS_START_PERIOD;
+
   const emps = await applyEmployeeScope(db('employees as e'), req.user, 'e.id')
     .leftJoin('employee_codes as ec', function() {
       this.on('ec.employee_id', '=', 'e.id').andOnNull('ec.released_at');
@@ -166,7 +205,7 @@ router.get('/employee-summary', async (req, res) => {
       m.total_lots++;
       m.total_send_weight += parseFloat(r.send_weight) || 0;
       m.total_polished += parseFloat(r.polished_weight) || 0;
-      m.total_work_hours += entryWorkHours(r);
+      m.total_work_hours += shouldCalculateWorkHours ? entryWorkHours(r) : 0;
       m.salary += parseFloat(r.calculated_salary) || 0;
       
       const w = parseFloat(r.send_weight) || 0;
@@ -192,7 +231,7 @@ router.get('/employee-summary', async (req, res) => {
     } else {
       m.total_entries++;
       m.total_weight += parseFloat(r.weight) || 0;
-      m.total_work_hours += entryWorkHours(r);
+      m.total_work_hours += shouldCalculateWorkHours ? entryWorkHours(r) : 0;
       m.salary += parseFloat(r.calculated_salary) || 0;
       if (r.shape_classification) {
         m.shapes[r.shape_classification] = (m.shapes[r.shape_classification] || 0) + 1;

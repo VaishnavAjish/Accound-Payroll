@@ -287,7 +287,16 @@ export default function LoginPage() {
         <div style={{ width: "100%", maxWidth: 380 }}>
           <div className="card login-card" style={{ padding: "32px 32px 28px" }}>
           <div style={{ textAlign: "center", marginBottom: 24 }}>
-            <div className="sidebar-logo" style={{ margin: "0 auto 12px", width: 48, height: 48, fontSize: 20 }}>A</div>
+            <div className="sidebar-logo" style={{ margin: "0 auto 12px", width: 48, height: 48 }}>
+              <svg width="100%" height="100%" viewBox="0 0 512 512" fill="none" stroke="currentColor" strokeWidth="16" strokeLinejoin="round" strokeLinecap="round" style={{ width: "65%", height: "65%" }}>
+                <polygon points="208,170 304,170 288,228 224,228" fill="rgba(255,255,255,0.25)" />
+                <polygon points="160,170 208,170 224,228 112,246" fill="rgba(255,255,255,0.15)" />
+                <polygon points="304,170 352,170 400,246 288,228" fill="rgba(255,255,255,0.15)" />
+                <polygon points="112,246 224,228 256,382" fill="rgba(255,255,255,0.05)" />
+                <polygon points="224,228 288,228 256,382" fill="rgba(255,255,255,0.2)" />
+                <polygon points="288,228 400,246 256,382" fill="rgba(255,255,255,0.05)" />
+              </svg>
+            </div>
             <div style={{ fontSize: 18, fontWeight: 700 }}>{view === "LOGIN" ? "Account Payroll" : "Reset Password"}</div>
             {view === "LOGIN" && <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Production &amp; Final Payable Management</div>}
           </div>

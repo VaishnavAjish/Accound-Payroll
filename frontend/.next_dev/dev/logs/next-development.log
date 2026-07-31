@@ -1,0 +1,138 @@
+{"timestamp":"00:00:13.680","source":"Server","level":"LOG","message":"- Experiments (use with caution):"}
+{"timestamp":"00:00:13.680","source":"Server","level":"LOG","message":"  · optimizePackageImports"}
+{"timestamp":"00:00:13.681","source":"Server","level":"LOG","message":""}
+{"timestamp":"00:01:20.558","source":"Server","level":"LOG","message":"○ Compiling /fantacy/data-fetch ..."}
+{"timestamp":"00:01:32.569","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
+{"timestamp":"00:01:35.643","source":"Server","level":"LOG","message":"○ Compiling /login ..."}
+{"timestamp":"00:01:39.435","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
+{"timestamp":"00:02:51.270","source":"Server","level":"LOG","message":"○ Compiling / ..."}
+{"timestamp":"00:02:51.710","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.720","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.721","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.730","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.731","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.734","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.735","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.740","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.741","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.744","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.746","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.746","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.747","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.751","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.752","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.752","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.754","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.754","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.755","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.756","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.756","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.757","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.757","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.758","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.759","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.759","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.760","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.760","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.761","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.761","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.761","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.762","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.762","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.763","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.763","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:51.764","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.008","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.009","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.009","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.034","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.036","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.039","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.048","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.051","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.087","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.088","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.089","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.089","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.120","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.125","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.126","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.127","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.128","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.129","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.133","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.134","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.137","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.187","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.190","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.226","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.227","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.235","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.236","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.238","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.264","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.266","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.266","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.267","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.268","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.272","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.278","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.329","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:52.332","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:54.449","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:02:54.449","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:03:11.373","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:03:11.373","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:03:11.373","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:03:11.376","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:04:00.523","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:04:18.028","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:04:59.876","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:05:21.140","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:05:52.339","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:06:11.947","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:06:44.570","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:07:50.173","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:08:28.118","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:09:05.906","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:09:24.955","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:10:05.653","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:10:36.012","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:10:36.013","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:10:36.019","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:10:47.610","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:11:06.920","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:11:18.655","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:11:50.728","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:11:55.686","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:12:07.834","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:12:18.724","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:12:49.167","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:13:06.181","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:13:06.455","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:13:53.486","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:14:11.309","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:14:29.887","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:15:08.438","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:15:23.907","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:15:40.320","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:15:56.882","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:16:33.867","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:16:48.110","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:17:13.515","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:17:51.985","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:18:17.818","source":"Server","level":"LOG","message":"[fantacy-stock] page diagnostics {}"}
+{"timestamp":"00:22:27.471","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:22:27.677","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:22:27.679","source":"Server","level":"ERROR","message":"Watchpack Error (watcher): Error: UNKNOWN: unknown error, watch"}
+{"timestamp":"00:22:33.669","source":"Server","level":"LOG","message":"○ Compiling /_not-found ..."}
+{"timestamp":"00:22:38.476","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
+{"timestamp":"00:22:52.214","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
+{"timestamp":"00:22:54.347","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
+{"timestamp":"00:22:56.802","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
+{"timestamp":"00:22:58.828","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
+{"timestamp":"00:23:01.496","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
+{"timestamp":"00:23:03.996","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
+{"timestamp":"00:23:09.879","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
+{"timestamp":"00:23:12.293","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
+{"timestamp":"00:23:13.530","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}

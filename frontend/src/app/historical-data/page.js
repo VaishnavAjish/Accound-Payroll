@@ -12,8 +12,11 @@ import { isSyntheticRecord, stockRecordKey } from "@/lib/fantacyStockFilter";
 
 const DB_NAME = "FantacyStockStoreDB";
 const STORE_NAME = "stock_data";
-const CACHE_VERSION = "v19_live_only";
-const CACHE_META_KEY = "cache_meta_v19";
+// MUST stay in lockstep with the same constants in /fantacy/data-fetch: both
+// pages share this database and store. If they disagree, each page treats the
+// other's cache as stale and wipes it, so the two thrash on every navigation.
+const CACHE_VERSION = "v20_dept_1_17";
+const CACHE_META_KEY = "cache_meta_v20";
 
 function openStockDB() {
   return new Promise((resolve) => {
@@ -238,18 +241,8 @@ export default function HistoricalDataPage() {
   }, [managerScopeKeys]);
 
   useEffect(() => {
-    // Automatic API fetch is paused per user directive. Only load stored archive from local storage.
-    async function loadCachedOnly() {
-      setLoading(true);
-      const cached = await loadCacheFromIndexedDB();
-      if (cached && cached.items && cached.items.length > 0) {
-        setDataArray(cached.items);
-        setLastUpdated(cached.lastFetchedTime ? new Date(cached.lastFetchedTime) : null);
-      }
-      setLoading(false);
-    }
-    loadCachedOnly();
-  }, []);
+    fetchStockData();
+  }, [fetchStockData]);
 
   const handlePeriodChange = (newPeriodId) => {
     setSelectedPeriodId(newPeriodId);
@@ -476,7 +469,7 @@ export default function HistoricalDataPage() {
   };
 
   const handleExport = () => {
-    exportToExcel(sortedData, `Historical_Stock_Data_${new Date().toISOString().slice(0, 10)}`);
+    exportToExcel(sortedData, `Historical_Stock_Data_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   const filterControlStyle = {

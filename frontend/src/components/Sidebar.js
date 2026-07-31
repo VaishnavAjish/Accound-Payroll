@@ -272,7 +272,16 @@ export default function Sidebar({ isSidebarCollapsed, onToggleSidebar }) {
   return (
     <aside className={`sidebar${isSidebarCollapsed ? " is-collapsed" : ""}`}>
       <div className="sidebar-header" style={{ justifyContent: isSidebarCollapsed ? "center" : "flex-start", padding: isSidebarCollapsed ? "16px 0" : "16px 20px" }}>
-        <div className="sidebar-logo">A</div>
+        <div className="sidebar-logo">
+          <svg width="100%" height="100%" viewBox="0 0 512 512" fill="none" stroke="currentColor" strokeWidth="16" strokeLinejoin="round" strokeLinecap="round" style={{ width: "65%", height: "65%" }}>
+            <polygon points="208,170 304,170 288,228 224,228" fill="rgba(255,255,255,0.25)" />
+            <polygon points="160,170 208,170 224,228 112,246" fill="rgba(255,255,255,0.15)" />
+            <polygon points="304,170 352,170 400,246 288,228" fill="rgba(255,255,255,0.15)" />
+            <polygon points="112,246 224,228 256,382" fill="rgba(255,255,255,0.05)" />
+            <polygon points="224,228 288,228 256,382" fill="rgba(255,255,255,0.2)" />
+            <polygon points="288,228 400,246 256,382" fill="rgba(255,255,255,0.05)" />
+          </svg>
+        </div>
         {!isSidebarCollapsed && (
           <div style={{ flexGrow: 1, minWidth: 0, overflow: 'hidden' }}>
             <div className="sidebar-title" style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>Account Payroll</div>

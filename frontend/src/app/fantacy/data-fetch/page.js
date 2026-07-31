@@ -33,9 +33,13 @@ const STORE_NAME = "stock_data";
  * Bump on any change to what gets cached or how it is filtered. A mismatch
  * wipes IndexedDB, which is how historic synthetic rows get evicted.
  * v19: live/mock separation, LotID dedupe key, exact department matching.
+ * v20: department roster widened to Polish 1-17 + SF-2 (was 1-15), and the
+ *      proxy now filters by department upstream. Any v19 cache was written
+ *      under the old scope -- it can contain rows from an unfiltered pull and
+ *      is missing Polish 16/17 -- so it must be discarded, not merged.
  */
-const CACHE_VERSION = "v19_live_only";
-const CACHE_META_KEY = "cache_meta_v19";
+const CACHE_VERSION = "v20_dept_1_17";
+const CACHE_META_KEY = "cache_meta_v20";
 
 function openStockDB() {
   return new Promise((resolve) => {
@@ -163,8 +167,8 @@ export default function FantacyDataFetchPage() {
   const [batchStatusText, setBatchStatusText] = useState(() => globalBatchStatusText);
 
   // View Options
-  const [filterDepartmentOnly, setFilterDepartmentOnly] = useState(true);
-  const [filterByPeriod, setFilterByPeriod] = useState(true);
+  const [filterDepartmentOnly, setFilterDepartmentOnly] = useState(false);
+  const [filterByPeriod, setFilterByPeriod] = useState(false);
   const [viewPreset, setViewPreset] = useState("ALL");
   const [compactDensity, setCompactDensity] = useState(false);
 
@@ -445,19 +449,49 @@ export default function FantacyDataFetchPage() {
           hasData = globalDataArray.length > 0;
           if (hasData) {
             setDataVersion((v) => v + 1);
+            setLoading(false);
           }
         }
       }
 
-      setLoading(false);
-      setBatchLoading(false);
-      const pausedText = "API Fetch Paused (Stopped until user starts)";
-      setBatchStatusText(pausedText);
-      globalBatchStatusText = pausedText;
+      const timeSinceLastFetch = now - (globalLastFetchedTime || storedTime);
+      const isLockExpired = timeSinceLastFetch >= AUTO_REFRESH_INTERVAL_MS;
+
+      if (!hasData || !isComplete || isLockExpired) {
+        if (isLockExpired) {
+          globalDataArray = [];
+          globalSeenIds.clear();
+          setDataVersion((v) => v + 1);
+          clearCacheFromIndexedDB();
+        }
+        fetchBatch(0, PAGE_SIZE, false);
+      } else {
+        setLoading(false);
+        setBatchLoading(false);
+      }
     }
 
     initializeStockData();
-  }, [permissionsLoading]);
+
+    const timer = setInterval(() => {
+      if (globalLastFetchedTime === 0) {
+        setSecondsUntilNextFetch(AUTO_REFRESH_INTERVAL_SEC);
+        return;
+      }
+      const elapsed = Date.now() - globalLastFetchedTime;
+      const remainingSec = Math.max(0, Math.ceil((AUTO_REFRESH_INTERVAL_MS - elapsed) / 1000));
+      setSecondsUntilNextFetch(remainingSec);
+
+      if (remainingSec === 0 && globalFetchFailCount < MAX_AUTO_RETRIES) {
+        handleManualRefresh();
+      }
+    }, 1000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [permissionsLoading, fetchBatch, handleManualRefresh]);
 
   const activeDataset = useMemo(() => {
     const base =
@@ -704,7 +738,7 @@ export default function FantacyDataFetchPage() {
   };
 
   const handleExport = () => {
-    exportToExcel(sortedData, `Fantacy_Polish_Stock_${new Date().toISOString().slice(0, 10)}`);
+    exportToExcel(sortedData, `Fantacy_Polish_Stock_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   const formatCountdown = (totalSec) => {
@@ -730,11 +764,16 @@ export default function FantacyDataFetchPage() {
     let val = row[colKey];
 
     if (val === undefined || val === null || val === "") {
-      if (colKey === "CompanyID") val = "2139";
-      else if (colKey === "CompanyName") val = "Skylab Diamond";
-      else if (colKey === "DepartmentAccountName") val = row.DepartmentAccountID || row.Department;
+      // No CompanyID/CompanyName fallback. These previously defaulted to
+      // "2139" / "Skylab Diamond", which INVENTED provenance: the live API
+      // returns CompanyID 1, and there is no CompanyName column at all. A
+      // missing value must render as "-", never as a plausible-looking guess.
+      if (colKey === "DepartmentAccountName") val = row.DepartmentAccountID || row.Department;
       else if (colKey === "LocationAccountName") val = row.LocationAccountID || row.Location;
       else if (colKey === "ProcessID") val = row.ProcessName || row.Process;
+      // `ProductionStatus` and `Status` do not exist on type Lot -- verified
+      // against the live API. `ProductionStatusID` is the real column and is
+      // requested directly, so this fallback only covers genuinely empty values.
       else if (colKey === "ProductionStatusID") val = row.ProductionStatus || row.Status;
       else if (colKey === "Quantity") val = row.Qty || row.Pcs;
       else if (colKey === "TB104ID") val = row.StoneLevel;
@@ -838,7 +877,7 @@ export default function FantacyDataFetchPage() {
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span className="badge badge-amber">Auto fetch: Paused</span>
+              <span className="badge badge-blue">Next auto fetch: {formatCountdown(secondsUntilNextFetch)}</span>
               <span className="badge badge-emerald">{activeDataset.length.toLocaleString()} active lots ({filterByPeriod ? (activePeriod?.name || "Active Period") : "All Periods"})</span>
               <span className="badge badge-gray">{globalDataArray.length.toLocaleString()} total synced</span>
               {managerScopedDepartments.length > 0 ? <span className="badge badge-gray">{managerScopedDepartments.join(", ")} only</span> : filterDepartmentOnly && <span className="badge badge-gray">Polish department only</span>}

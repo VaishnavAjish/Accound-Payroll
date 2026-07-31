@@ -1,6 +1,9 @@
 import * as XLSX from 'xlsx';
 
 export function exportToExcel(data, fileName = 'export.xlsx', sheetName = 'Sheet1') {
+  const safeFileName = String(fileName || 'export.xlsx').toLowerCase().endsWith('.xlsx')
+    ? fileName
+    : `${fileName || 'export'}.xlsx`;
   const worksheet = XLSX.utils.json_to_sheet(data);
   
   if (data && data.length > 0) {
@@ -57,5 +60,5 @@ export function exportToExcel(data, fileName = 'export.xlsx', sheetName = 'Sheet
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-  XLSX.writeFile(workbook, fileName);
+  XLSX.writeFile(workbook, safeFileName, { bookType: 'xlsx' });
 }

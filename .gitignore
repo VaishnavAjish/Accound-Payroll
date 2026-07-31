@@ -11,6 +11,7 @@ node_modules/
 
 # Next.js and build outputs
 .next/
+.next_dev/
 **/build/
 **/dist/
 **/out/
