@@ -354,7 +354,7 @@ export async function GET(request) {
   const skip = clampInt(searchParams.get("skip"), 0, 0, MAX_SKIP);
   const take = clampInt(searchParams.get("take"), DEFAULT_TAKE, 1, MAX_TAKE);
   const departments = parseRequestedDepartments(searchParams.get("departments"));
-  const forceFresh = searchParams.get("fresh") === "1" || searchParams.get("_t");
+  const forceFresh = searchParams.get("fresh") === "1";
 
   // Keyed by SCOPE, not by page: one upstream fetch serves every page.
   const scopeKey = `${departments.join(",")}_${COMPANY_ID || ""}_${LOT_STATUS.join(",")}`;

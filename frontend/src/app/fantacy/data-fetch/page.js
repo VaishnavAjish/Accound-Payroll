@@ -14,8 +14,8 @@ import { isSyntheticRecord, stockRecordKey } from "@/lib/fantacyStockFilter";
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const AUTO_REFRESH_INTERVAL_SEC = AUTO_REFRESH_INTERVAL_MS / 1000;
 
-// Single-pass request size (50000) to fetch all stock records at once in 1 single shot (10ms).
-const PAGE_SIZE = 50000;
+// High-performance streaming page size (5000 records per batch).
+const PAGE_SIZE = 5000;
 
 // High-performance global store
 let globalDataArray = [];
