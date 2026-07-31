@@ -60,41 +60,61 @@ function openStockDB() {
   });
 }
 
+function upsertStockRecords(existingItems = [], incomingItems = []) {
+  const map = new Map();
+
+  for (const item of existingItems) {
+    if (!item) continue;
+    const key = stockRecordKey(item) || String(item.LotID || item.Stock_ID || item.DocID || "");
+    if (key) map.set(key, item);
+  }
+
+  for (const item of incomingItems) {
+    if (!item) continue;
+    const key = stockRecordKey(item) || String(item.LotID || item.Stock_ID || item.DocID || "");
+    if (key) map.set(key, item);
+  }
+
+  return Array.from(map.values());
+}
+
 /**
- * Persist the cache, replacing it wholesale rather than appending. Synthetic
- * rows are stripped on the way in, and the source + department scope are
- * recorded so a later load can refuse a mismatched cache.
+ * Persist the cache cumulatively: new/updated items merge into existing storage
+ * by unique key (LotID/Stock_ID) so no historical record is ever deleted.
  */
 function saveCacheToIndexedDB(dataArray, lastFetchedTime, source, departmentScope) {
   loadRunner.schedule("saveIndexedDB", async () => {
     try {
+      const existingCache = await loadCacheFromIndexedDB(source, departmentScope);
+      const existingItems = existingCache && existingCache.items ? existingCache.items : [];
+
+      const cleanItems = source === "mock" ? dataArray : dataArray.filter((i) => !isSyntheticRecord(i));
+      const mergedItems = upsertStockRecords(existingItems, cleanItems);
+
       const db = await openStockDB();
       if (!db) return;
       const tx = db.transaction([STORE_NAME], "readwrite");
       const store = tx.objectStore(STORE_NAME);
 
-      // Full replace: stale chunks from a longer previous sync must not survive.
       store.clear();
-
-      const cleanItems = source === "mock" ? dataArray : dataArray.filter((i) => !isSyntheticRecord(i));
 
       store.put(
         {
           version: CACHE_VERSION,
-          count: cleanItems.length,
+          count: mergedItems.length,
           lastFetchedTime,
-          source,
+          source: "historical_upsert",
           departmentScope: departmentScope || [],
         },
         CACHE_META_KEY
       );
 
       const CHUNK_SIZE = 50000;
-      for (let i = 0; i < cleanItems.length; i += CHUNK_SIZE) {
-        store.put(cleanItems.slice(i, i + CHUNK_SIZE), `cache_chunk_${i / CHUNK_SIZE}`);
+      for (let i = 0; i < mergedItems.length; i += CHUNK_SIZE) {
+        store.put(mergedItems.slice(i, i + CHUNK_SIZE), `cache_chunk_${i / CHUNK_SIZE}`);
       }
     } catch (err) {
-      console.warn("IndexedDB save failed:", err);
+      console.warn("IndexedDB cumulative save failed:", err);
     }
   });
 }
