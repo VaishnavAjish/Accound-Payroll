@@ -325,6 +325,9 @@ export default function FantacyDataFetchPage() {
         headers: {
           "Cache-Control": "no-cache, no-store, must-revalidate",
           Pragma: "no-cache",
+          ...(typeof window !== "undefined" && localStorage.getItem("token")
+            ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
+            : {}),
         },
       });
       const text = await res.text();
@@ -447,7 +450,6 @@ export default function FantacyDataFetchPage() {
     globalBatchStatusText = initialStatus;
 
     fetchBatch(0, PAGE_SIZE, true);
-    setSecondsUntilNextFetch(AUTO_REFRESH_INTERVAL_SEC);
   }, [fetchBatch]);
 
   useEffect(() => {

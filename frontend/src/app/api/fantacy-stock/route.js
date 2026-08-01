@@ -34,7 +34,7 @@
 
 import { NextResponse } from "next/server";
 import https from "https";
-import { parseRequestedDepartments, upstreamDepartmentValues } from "@/lib/fantacyDeptMapper";
+import { normalizeDepartment, parseRequestedDepartments, upstreamDepartmentValues } from "@/lib/fantacyDeptMapper";
 import { applyStockPipeline } from "@/lib/fantacyStockFilter";
 import { STOCK_SELECT_FIELDS } from "@/lib/fantacyStockFields";
 
@@ -42,6 +42,7 @@ const API_BASE = process.env.SKYLAB_API_BASE;
 const USERNAME = process.env.SKYLAB_API_USERNAME;
 const PASSWORD = process.env.SKYLAB_API_PASSWORD;
 const GRANT_TYPE = process.env.SKYLAB_API_GRANT_TYPE || "password";
+const BACKEND_API_BASE = process.env.BACKEND_API_BASE || process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
 
 /**
  * Optional company scoping on the `CompanyID` column.
@@ -239,6 +240,63 @@ function errorResponse({ status, message, skip, take, diagnostics }) {
   );
 }
 
+function forbiddenResponse(message, skip, take, status = 403) {
+  return errorResponse({ status, message, skip, take });
+}
+
+function canonicalDepartmentsFromAccess(departmentAccess) {
+  if (!Array.isArray(departmentAccess)) return [];
+  if (departmentAccess.includes("ALL")) return ["ALL"];
+  return departmentAccess.map(normalizeDepartment).filter(Boolean);
+}
+
+async function fetchBackendJson(path, authHeader) {
+  const res = await fetch(`${BACKEND_API_BASE}${path}`, {
+    headers: { Authorization: authHeader },
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+async function resolveAllowedDepartments(request) {
+  const authHeader = request.headers.get("authorization") || "";
+  if (!authHeader.startsWith("Bearer ")) return { ok: false, status: 401, message: "Authentication is required." };
+
+  const [me, rbac] = await Promise.all([
+    fetchBackendJson("/auth/me", authHeader),
+    fetchBackendJson("/rbac/me", authHeader),
+  ]);
+  if (!me || !rbac) return { ok: false, status: 401, message: "Invalid or expired session." };
+
+  const permissions = rbac.permissions || {};
+  if (!permissions.manage_fantacy || !permissions.fetch_fantacy_department_data) {
+    return { ok: false, status: 403, message: "You do not have permission to fetch Fantacy department data." };
+  }
+
+  const accessDepartments = canonicalDepartmentsFromAccess(rbac.departmentAccess);
+  if (me.role === "SUPER_ADMIN" || accessDepartments.includes("ALL")) {
+    return { ok: true, unrestricted: true, departments: [] };
+  }
+  if (!accessDepartments.length) {
+    return { ok: false, status: 403, message: "No Fantacy department access is assigned to your role." };
+  }
+  return { ok: true, unrestricted: false, departments: accessDepartments };
+}
+
+function enforceDepartmentScope(requestedDepartments, access) {
+  if (!access.ok) return access;
+  if (access.unrestricted) return { ok: true, departments: requestedDepartments };
+  if (!requestedDepartments.length) return { ok: true, departments: access.departments };
+
+  const allowed = new Set(access.departments);
+  const denied = requestedDepartments.filter((department) => !allowed.has(department));
+  if (denied.length) {
+    return { ok: false, status: 403, message: "Requested Fantacy department is outside your assigned access." };
+  }
+  return { ok: true, departments: requestedDepartments };
+}
+
 /**
  * Build the /api/stock request body.
  *
@@ -353,8 +411,12 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const skip = clampInt(searchParams.get("skip"), 0, 0, MAX_SKIP);
   const take = clampInt(searchParams.get("take"), DEFAULT_TAKE, 1, MAX_TAKE);
-  const departments = parseRequestedDepartments(searchParams.get("departments"));
+  const requestedDepartments = parseRequestedDepartments(searchParams.get("departments"));
   const forceFresh = searchParams.get("fresh") === "1";
+  const access = await resolveAllowedDepartments(request);
+  const scoped = enforceDepartmentScope(requestedDepartments, access);
+  if (!scoped.ok) return forbiddenResponse(scoped.message, skip, take, scoped.status);
+  const departments = scoped.departments;
 
   // Keyed by SCOPE, not by page: one upstream fetch serves every page.
   const scopeKey = `${departments.join(",")}_${COMPANY_ID || ""}_${LOT_STATUS.join(",")}`;
