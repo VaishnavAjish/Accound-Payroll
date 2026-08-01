@@ -78,6 +78,36 @@ function upsertStockRecords(existingItems = [], incomingItems = []) {
   return Array.from(map.values());
 }
 
+async function getAllIndexedDBItems() {
+  try {
+    const db = await openStockDB();
+    if (!db) return [];
+    return new Promise((resolve) => {
+      const tx = db.transaction([STORE_NAME], "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(CACHE_META_KEY);
+      req.onsuccess = async () => {
+        const meta = req.result;
+        if (!meta || !meta.count) return resolve([]);
+        const items = [];
+        const CHUNK_SIZE = 50000;
+        for (let i = 0; i < meta.count; i += CHUNK_SIZE) {
+          const chunkReq = store.get(`cache_chunk_${i / CHUNK_SIZE}`);
+          const chunkData = await new Promise((r) => {
+            chunkReq.onsuccess = () => r(chunkReq.result || []);
+            chunkReq.onerror = () => r([]);
+          });
+          items.push(...chunkData);
+        }
+        resolve(items);
+      };
+      req.onerror = () => resolve([]);
+    });
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Persist the cache cumulatively: new/updated items merge into existing storage
  * by unique key (LotID/Stock_ID) so no historical record is ever deleted.
@@ -85,9 +115,7 @@ function upsertStockRecords(existingItems = [], incomingItems = []) {
 function saveCacheToIndexedDB(dataArray, lastFetchedTime, source, departmentScope) {
   loadRunner.schedule("saveIndexedDB", async () => {
     try {
-      const existingCache = await loadCacheFromIndexedDB(source, departmentScope);
-      const existingItems = existingCache && existingCache.items ? existingCache.items : [];
-
+      const existingItems = await getAllIndexedDBItems();
       const cleanItems = source === "mock" ? dataArray : dataArray.filter((i) => !isSyntheticRecord(i));
       const mergedItems = upsertStockRecords(existingItems, cleanItems);
 
@@ -104,7 +132,7 @@ function saveCacheToIndexedDB(dataArray, lastFetchedTime, source, departmentScop
           count: mergedItems.length,
           lastFetchedTime,
           source: "historical_upsert",
-          departmentScope: departmentScope || [],
+          departmentScope: [],
         },
         CACHE_META_KEY
       );
